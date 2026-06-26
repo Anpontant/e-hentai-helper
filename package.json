@@ -1,6 +1,6 @@
 {
   "name": "e-hentai-helper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "scripts": {
     "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
     "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",

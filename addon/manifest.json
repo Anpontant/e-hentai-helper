@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "E-Hentai Helper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scroll, fit images, and preload nearby pages on E-Hentai viewer pages.",
   "icons": {
     "48": "icons/icon.svg",
