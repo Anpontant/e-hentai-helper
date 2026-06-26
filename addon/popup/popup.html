@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>E-Hentai Helper</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <section class="group">
+        <div class="label">Preload</div>
+        <div class="segmented" data-setting="preloadAheadCount">
+          <button type="button" data-value="0">Off</button>
+          <button type="button" data-value="1">+1</button>
+          <button type="button" data-value="2">+2</button>
+          <button type="button" data-value="3">+3</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="label">Fit</div>
+        <div class="segmented" data-setting="fitMode">
+          <button type="button" data-value="height">Height</button>
+          <button type="button" data-value="width">Width</button>
+          <button type="button" data-value="original">1:1</button>
+        </div>
+      </section>
+
+      <section class="checks">
+        <label>
+          <input type="checkbox" id="autoScroll">
+          Auto scroll
+        </label>
+        <label>
+          <input type="checkbox" id="showStatus">
+          Status
+        </label>
+      </section>
+
+      <section class="actions">
+        <button type="button" id="scrollToImage">Scroll</button>
+        <button type="button" id="fullscreen">Fullscreen</button>
+      </section>
+
+      <div class="hint" id="message"></div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

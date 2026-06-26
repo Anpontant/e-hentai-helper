@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "E-Hentai Helper",
+  "version": "0.1.0",
+  "description": "Scroll, fit images, and preload nearby pages on E-Hentai viewer pages.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://e-hentai.org/s/*",
+    "https://exhentai.org/s/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://e-hentai.org/s/*",
+        "https://exhentai.org/s/*"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "E-Hentai Helper",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon.svg",
+      "32": "icons/icon.svg"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "e-hentai-helper@local",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  }
+}

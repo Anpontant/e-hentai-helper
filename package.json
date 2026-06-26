@@ -1,0 +1,14 @@
+{
+  "name": "e-hentai-helper",
+  "version": "0.1.0",
+  "scripts": {
+    "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
+    "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "version:major": "node scripts/bump-version.mjs major"
+  },
+  "devDependencies": {
+    "web-ext": "^8.0.0"
+  }
+}

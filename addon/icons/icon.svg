@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="E-Hentai Helper">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="110" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f80ed"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="page" x1="42" y1="24" x2="86" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="26" fill="url(#bg)"/>
+  <rect x="30" y="19" width="68" height="90" rx="8" fill="url(#page)"/>
+  <path d="M42 38h44M42 52h44M42 66h28" fill="none" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+  <path d="M92 82l15 15-15 15" fill="none" stroke="#f8fafc" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M76 97h31" fill="none" stroke="#f8fafc" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="93" cy="33" r="12" fill="#22c55e"/>
+  <path d="M88 33l4 4 7-9" fill="none" stroke="#052e16" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
