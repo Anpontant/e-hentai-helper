@@ -67,6 +67,41 @@ For the automatic version bump workflow, enable write access for GitHub Actions:
 2. Go to `Actions` -> `General`.
 3. Under `Workflow permissions`, select `Read and write permissions`.
 
+## Automatic Signing
+
+The `Sign Add-on` GitHub Actions workflow can submit the extension to AMO's
+unlisted signing flow.
+
+1. Create AMO API credentials.
+2. Add these GitHub repository secrets:
+   - `AMO_JWT_ISSUER`
+   - `AMO_JWT_SECRET`
+3. Push to `main` or `master`.
+4. Wait for `Version Bump` to finish.
+5. `Sign Add-on` runs after the version bump, uploads the signed artifact, and
+   publishes a GitHub Release.
+
+You can also run `Sign Add-on` manually from the GitHub Actions page.
+
+If signing succeeds, download the signed `.xpi` from the workflow artifact or
+from the AMO version page.
+
+## Automatic Updates
+
+The manifest points Firefox at this stable update manifest URL:
+
+```text
+https://github.com/Anpontant/e-hentai-helper/releases/latest/download/updates.json
+```
+
+The signing workflow generates `updates.json` and uploads it with the signed XPI
+to each GitHub Release. Firefox reads that JSON, compares the version, then
+downloads the signed XPI from the release asset URL.
+
+The currently installed extension must already include this `update_url`. If you
+installed an older build that did not include it, install the next signed XPI
+manually once; after that, updates can be automatic.
+
 ### Build Submission Package
 
 From the repository root:

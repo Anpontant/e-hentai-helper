@@ -1,0 +1,88 @@
+name: Sign Add-on
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Version Bump
+    types:
+      - completed
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  sign:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check JavaScript syntax
+        run: |
+          node --check addon/content/content.js
+          node --check addon/popup/popup.js
+          node --check scripts/bump-version.mjs
+      - name: Build package
+        run: npm run addon:build
+      - name: Sign unlisted add-on
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: npm run addon:sign
+      - name: Prepare release update manifest
+        id: release
+        run: |
+          VERSION=$(node -p "require('./addon/manifest.json').version")
+          XPI=$(find dist -maxdepth 1 -name '*.xpi' -type f | head -n 1)
+          if [ -z "$XPI" ]; then
+            echo "No signed XPI found in dist" >&2
+            exit 1
+          fi
+          XPI_NAME=$(basename "$XPI")
+          TAG="v$VERSION"
+          UPDATE_LINK="https://github.com/Anpontant/e-hentai-helper/releases/download/$TAG/$XPI_NAME"
+          cat > dist/updates.json <<EOF
+          {
+            "addons": {
+              "e-hentai-helper@local": {
+                "updates": [
+                  {
+                    "version": "$VERSION",
+                    "update_link": "$UPDATE_LINK"
+                  }
+                ]
+              }
+            }
+          }
+          EOF
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "xpi=$XPI" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          VERSION="${{ steps.release.outputs.version }}"
+          XPI="${{ steps.release.outputs.xpi }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$XPI" dist/updates.json --clobber
+          else
+            gh release create "$TAG" "$XPI" dist/updates.json \
+              --title "E-Hentai Helper $VERSION" \
+              --notes "Signed Firefox add-on release $VERSION."
+          fi
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-addon
+          path: dist/*
