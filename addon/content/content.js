@@ -46,8 +46,7 @@
 
   function showStatus(text) {
     if (!settings.showStatus) return;
-    var statusEl = getStatusElement();
-    statusEl.textContent = text;
+    showStatusLines([text]);
   }
 
   function showStatusLines(lines) {
@@ -55,10 +54,11 @@
     var statusEl = getStatusElement();
     statusEl.textContent = '';
 
-    for (var i = 0; i < lines.length; i += 1) {
+    var allLines = [getProgressLabel()].concat(lines || []);
+    for (var i = 0; i < allLines.length; i += 1) {
       var line = document.createElement('div');
-      line.className = 'eh-helper-status-line';
-      line.textContent = lines[i];
+      line.className = i === 0 ? 'eh-helper-status-progress' : 'eh-helper-status-line';
+      line.textContent = allLines[i];
       statusEl.appendChild(line);
     }
   }
@@ -178,14 +178,34 @@
     return match ? match[1] : '';
   }
 
+  function getPageTextMatch() {
+    if (!document.body) return null;
+    return document.body.textContent.match(/(?:^|\D)(\d+)\s*\/\s*(\d+)(?:\D|$)/);
+  }
+
   function getCurrentPageLabel() {
     var fromUrl = getViewerPageFromUrl(location.href);
     if (fromUrl) return fromUrl;
 
-    var pageText = document.body ? document.body.textContent.match(/(\d+)\s*\/\s*(\d+)/) : null;
+    var pageText = getPageTextMatch();
     if (pageText) return pageText[1] + '/' + pageText[2];
 
     return '?';
+  }
+
+  function getTotalPageLabel() {
+    var pageText = getPageTextMatch();
+    return pageText ? pageText[2] : '?';
+  }
+
+  function getProgressLabel() {
+    var current = getViewerPageFromUrl(location.href);
+    var total = getTotalPageLabel();
+    if (!current) {
+      var pageText = getPageTextMatch();
+      current = pageText ? pageText[1] : '?';
+    }
+    return 'Page ' + current + '/' + total;
   }
 
   function getUrlTail(url) {
@@ -248,7 +268,7 @@
         var y = img.getBoundingClientRect().top + window.pageYOffset - SCROLL_OFFSET;
         window.scrollTo(0, Math.max(0, y));
       }
-      showStatus('EH: p.' + getCurrentPageLabel() + ' ready');
+      showStatus('EH: ready');
     }
 
     if (img.complete) {

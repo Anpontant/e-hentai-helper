@@ -74,8 +74,17 @@ label {
   font-size: 12px;
 }
 
+.version {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  color: #666;
+  font-size: 11px;
+}
+
 @media (prefers-color-scheme: dark) {
-  .hint {
+  .hint,
+  .version {
     color: #aaa;
   }
 }

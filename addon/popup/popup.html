@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>E-Hentai Helper</title>
+    <title data-i18n="extensionName">E-Hentai Helper</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="popup">
       <section class="group">
-        <div class="label">Preload</div>
+        <div class="label" data-i18n="popupPreload">Preload</div>
         <div class="segmented" data-setting="preloadAheadCount">
-          <button type="button" data-value="0">Off</button>
+          <button type="button" data-value="0" data-i18n="popupOff">Off</button>
           <button type="button" data-value="1">+1</button>
           <button type="button" data-value="2">+2</button>
           <button type="button" data-value="3">+3</button>
@@ -19,10 +19,10 @@
       </section>
 
       <section class="group">
-        <div class="label">Fit</div>
+        <div class="label" data-i18n="popupFit">Fit</div>
         <div class="segmented" data-setting="fitMode">
-          <button type="button" data-value="height">Height</button>
-          <button type="button" data-value="width">Width</button>
+          <button type="button" data-value="height" data-i18n="popupHeight">Height</button>
+          <button type="button" data-value="width" data-i18n="popupWidth">Width</button>
           <button type="button" data-value="original">1:1</button>
         </div>
       </section>
@@ -30,20 +30,24 @@
       <section class="checks">
         <label>
           <input type="checkbox" id="autoScroll">
-          Auto scroll
+          <span data-i18n="popupAutoScroll">Auto scroll</span>
         </label>
         <label>
           <input type="checkbox" id="showStatus">
-          Status
+          <span data-i18n="popupStatus">Status</span>
         </label>
       </section>
 
       <section class="actions">
-        <button type="button" id="scrollToImage">Scroll</button>
-        <button type="button" id="fullscreen">Fullscreen</button>
+        <button type="button" id="scrollToImage" data-i18n="popupScroll">Scroll</button>
+        <button type="button" id="fullscreen" data-i18n="popupFullscreen">Fullscreen</button>
       </section>
 
       <div class="hint" id="message"></div>
+      <footer class="version">
+        <span data-i18n="popupVersion">Version</span>
+        <span id="version"></span>
+      </footer>
     </main>
     <script src="popup.js"></script>
   </body>

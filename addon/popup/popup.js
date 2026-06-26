@@ -12,6 +12,23 @@
     document.getElementById('message').textContent = text;
   }
 
+  function msg(name) {
+    return browser.i18n.getMessage(name) || name;
+  }
+
+  function localizeDocument() {
+    var nodes = document.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < nodes.length; i += 1) {
+      var key = nodes[i].getAttribute('data-i18n');
+      nodes[i].textContent = msg(key);
+    }
+    document.title = msg('extensionName');
+  }
+
+  function renderVersion() {
+    document.getElementById('version').textContent = browser.runtime.getManifest().version;
+  }
+
   function queryActiveTab() {
     return browser.tabs.query({ active: true, currentWindow: true }).then(function (tabs) {
       return tabs && tabs.length ? tabs[0] : null;
@@ -65,7 +82,7 @@
         return sendToContent('reload-settings');
       })
       .then(function () {
-        setMessage('Saved');
+        setMessage(msg('popupSaved'));
       });
   }
 
@@ -93,6 +110,8 @@
   }
 
   function init() {
+    localizeDocument();
+    renderVersion();
     browser.storage.local.get(DEFAULT_SETTINGS).then(render);
 
     setupSegmented('preloadAheadCount');
@@ -102,13 +121,13 @@
 
     document.getElementById('scrollToImage').addEventListener('click', function () {
       sendToContent('scroll-to-image').then(function () {
-        setMessage('Scrolled');
+        setMessage(msg('popupScrolled'));
       });
     });
 
     document.getElementById('fullscreen').addEventListener('click', function () {
       toggleWindowFullscreen().then(function () {
-        setMessage('Fullscreen toggled');
+        setMessage(msg('popupFullscreenToggled'));
       });
     });
   }

@@ -1,0 +1,53 @@
+{
+  "extensionName": {
+    "message": "E-Hentai Helper",
+    "description": "Extension name"
+  },
+  "extensionShortName": {
+    "message": "EH Helper",
+    "description": "Short extension name"
+  },
+  "extensionDescription": {
+    "message": "Improves E-Hentai and ExHentai image viewing with auto-scroll, viewport fitting, page preloading, and fullscreen controls.",
+    "description": "Extension description"
+  },
+  "popupPreload": {
+    "message": "Preload"
+  },
+  "popupOff": {
+    "message": "Off"
+  },
+  "popupFit": {
+    "message": "Fit"
+  },
+  "popupHeight": {
+    "message": "Height"
+  },
+  "popupWidth": {
+    "message": "Width"
+  },
+  "popupAutoScroll": {
+    "message": "Auto scroll"
+  },
+  "popupStatus": {
+    "message": "Status"
+  },
+  "popupScroll": {
+    "message": "Scroll"
+  },
+  "popupFullscreen": {
+    "message": "Fullscreen"
+  },
+  "popupSaved": {
+    "message": "Saved"
+  },
+  "popupScrolled": {
+    "message": "Scrolled"
+  },
+  "popupFullscreenToggled": {
+    "message": "Fullscreen toggled"
+  },
+  "popupVersion": {
+    "message": "Version"
+  }
+}

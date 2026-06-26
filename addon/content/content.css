@@ -8,7 +8,7 @@
 
 #eh-helper-status {
   position: fixed;
-  right: 8px;
+  left: 8px;
   bottom: 8px;
   z-index: 2147483647;
   display: grid;
@@ -26,6 +26,11 @@
 
 #eh-helper-status .eh-helper-status-line {
   display: block;
+}
+
+#eh-helper-status .eh-helper-status-progress {
+  display: block;
+  font-weight: 700;
 }
 
 .eh-helper-preload-frame {
