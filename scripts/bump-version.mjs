@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
 const release = process.argv[2] || 'patch';
@@ -61,5 +62,10 @@ if (fs.existsSync(files[2])) {
   }
   writeJson(files[2], lock);
 }
+
+execFileSync('npx', ['prettier', '--write', files[0], files[1]], {
+  cwd: root,
+  stdio: 'inherit'
+});
 
 console.log(nextVersion);
