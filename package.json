@@ -1,6 +1,6 @@
 {
   "name": "e-hentai-helper",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "scripts": {
     "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
     "addon:dev": "npx web-ext run --source-dir addon --firefox-profile .web-ext-profile --keep-profile-changes --start-url about:debugging#/runtime/this-firefox",
