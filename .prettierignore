@@ -4,3 +4,4 @@ package-lock.json
 *.xpi
 *.zip
 tools/investigate-preload-oneline.js
+tools/investigate-performance-oneline.js

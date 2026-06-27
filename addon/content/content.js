@@ -25,6 +25,7 @@
   var preloadAbortController = null;
   var lastStatusText = '';
   var observer = null;
+  var observerTargetSignature = '';
 
   function log() {
     if (!LOG || !window.console) return;
@@ -300,9 +301,16 @@
     return getNextPageUrlFromDocument(document, location.href);
   }
 
-  function scrollToImage() {
+  function scrollToImage(retryCount) {
+    retryCount = retryCount || 0;
     var img = getMainImage();
     if (!img) {
+      if (retryCount < 20) {
+        window.setTimeout(function () {
+          scrollToImage(retryCount + 1);
+        }, 100);
+        return;
+      }
       showStatus('EH: image not found');
       return;
     }
@@ -381,7 +389,7 @@
 
   function setPreloadState(depth, patch) {
     preloadState[depth] = Object.assign(preloadState[depth] || {}, patch);
-    updatePreloadStatus();
+    if (settings.showStatus) updatePreloadStatus();
   }
 
   function getImageUrlFromDocument(doc, docUrl) {
@@ -431,7 +439,7 @@
       var image = new Image();
       var timeout = window.setTimeout(function () {
         reject(new Error('image preload timeout'));
-      }, 8000);
+      }, 5000);
 
       image.onload = function () {
         window.clearTimeout(timeout);
@@ -641,6 +649,9 @@
     observer = new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i += 1) {
         if (mutations[i].type === 'childList' || mutations[i].type === 'attributes') {
+          if (observerTargetSignature === 'bootstrap') {
+            window.setTimeout(observeImageAndDomChanges, 0);
+          }
           handlePageStateChange('mutation');
           return;
         }
@@ -655,7 +666,24 @@
     var pageContainer = document.getElementById('i1');
     if (pageContainer) targets.push(pageContainer);
 
-    if (!targets.length && document.body) targets.push(document.body);
+    if (!targets.length) {
+      var bootstrapTarget = document.body || document.documentElement;
+      if (!bootstrapTarget) return;
+      observerTargetSignature = 'bootstrap';
+      observer.observe(bootstrapTarget, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src', 'href']
+      });
+      return;
+    }
+
+    observerTargetSignature = targets
+      .map(function (target) {
+        return target.id || target.tagName;
+      })
+      .join('|');
 
     for (var i = 0; i < targets.length; i += 1) {
       observer.observe(targets[i], {
