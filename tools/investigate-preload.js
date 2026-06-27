@@ -1,0 +1,175 @@
+(async function () {
+  function norm(s) {
+    return String(s || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function info(el) {
+    if (!el) return null;
+    return {
+      tag: el.tagName,
+      id: el.id || '',
+      class: typeof el.className === 'string' ? el.className : '',
+      text: norm(el.textContent).slice(0, 160),
+      href: el.href || '',
+      src: el.src || '',
+      title: el.title || '',
+      alt: el.alt || ''
+    };
+  }
+
+  var img = document.querySelector('#img');
+  var sn = document.querySelector('.sn');
+
+  var links = Array.from(document.querySelectorAll('a[href*="/s/"]'))
+    .map(info)
+    .filter(Boolean)
+    .slice(0, 40);
+
+  var navs = Array.from(document.querySelectorAll('a, area, button, input'))
+    .map(info)
+    .filter(function (x) {
+      return [x.id, x.class, x.text, x.title, x.alt, x.href]
+        .join(' ')
+        .match(/next|prev|previous|first|last|前|次|戻|進|\/s\//i);
+    })
+    .slice(0, 80);
+
+  var ancestors = [];
+  var p = img;
+  for (var i = 0; p && i < 8; i += 1) {
+    ancestors.push(info(p));
+    p = p.parentElement;
+  }
+
+  var guessedNext = '';
+  if (img && img.parentElement && img.parentElement.tagName === 'A') {
+    guessedNext = img.parentElement.href;
+  } else {
+    var found = links.find(function (x) {
+      return x.href && x.href !== location.href;
+    });
+    guessedNext = found ? found.href : '';
+  }
+
+  var fetchResult = {
+    guessedNext: guessedNext,
+    ok: false,
+    status: null,
+    finalUrl: '',
+    pageText: '',
+    imageSrc: '',
+    title: '',
+    error: ''
+  };
+
+  if (guessedNext) {
+    try {
+      var res = await fetch(guessedNext, {
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      fetchResult.status = res.status;
+      fetchResult.ok = res.ok;
+      fetchResult.finalUrl = res.url;
+
+      var html = await res.text();
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      fetchResult.pageText = norm(doc.querySelector('.sn') && doc.querySelector('.sn').textContent);
+      fetchResult.imageSrc = doc.querySelector('#img') ? doc.querySelector('#img').src : '';
+      fetchResult.title = doc.title;
+    } catch (e) {
+      fetchResult.error = String(e && e.stack ? e.stack : e);
+    }
+  }
+
+  var iframeResult = {
+    attempted: Boolean(guessedNext),
+    loaded: false,
+    readable: false,
+    pageText: '',
+    imageSrc: '',
+    error: ''
+  };
+
+  if (guessedNext) {
+    await new Promise(function (resolve) {
+      var frame = document.createElement('iframe');
+      frame.src = guessedNext;
+      frame.style.position = 'absolute';
+      frame.style.width = '1px';
+      frame.style.height = '1px';
+      frame.style.left = '-99999px';
+      frame.style.top = '-99999px';
+      frame.style.opacity = '0';
+      frame.style.border = '0';
+
+      function finish() {
+        try {
+          iframeResult.loaded = true;
+          var frameDoc = frame.contentDocument || frame.contentWindow.document;
+          iframeResult.readable = Boolean(frameDoc);
+          iframeResult.pageText = norm(
+            frameDoc.querySelector('.sn') && frameDoc.querySelector('.sn').textContent
+          );
+          iframeResult.imageSrc = frameDoc.querySelector('#img')
+            ? frameDoc.querySelector('#img').src
+            : '';
+        } catch (e) {
+          iframeResult.error = String(e && e.stack ? e.stack : e);
+        }
+        frame.remove();
+        resolve();
+      }
+
+      frame.addEventListener('load', finish, { once: true });
+      frame.addEventListener(
+        'error',
+        function () {
+          iframeResult.error = 'iframe error event';
+          frame.remove();
+          resolve();
+        },
+        { once: true }
+      );
+
+      document.documentElement.appendChild(frame);
+
+      setTimeout(function () {
+        if (!iframeResult.loaded) {
+          iframeResult.error = 'iframe timeout';
+          frame.remove();
+          resolve();
+        }
+      }, 8000);
+    });
+  }
+
+  var result = {
+    current: {
+      url: location.href,
+      title: document.title,
+      pageText: sn ? norm(sn.textContent) : '',
+      image: img
+        ? {
+            src: img.src,
+            complete: img.complete,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+            currentSrc: img.currentSrc,
+            parent: info(img.parentElement)
+          }
+        : null,
+      links: links,
+      navs: navs,
+      ancestors: ancestors
+    },
+    fetchResult: fetchResult,
+    iframeResult: iframeResult
+  };
+
+  console.log('EH_HELPER_INVESTIGATION_RESULT');
+  console.log(JSON.stringify(result, null, 2));
+  return result;
+})();

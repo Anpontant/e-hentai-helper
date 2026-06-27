@@ -3,3 +3,4 @@ node_modules/
 package-lock.json
 *.xpi
 *.zip
+tools/investigate-preload-oneline.js

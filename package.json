@@ -1,6 +1,6 @@
 {
   "name": "e-hentai-helper",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "scripts": {
     "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
     "addon:lint": "npx web-ext lint --source-dir addon --self-hosted",

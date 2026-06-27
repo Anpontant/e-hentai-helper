@@ -19,6 +19,12 @@
   var lastPreloadRootKey = '';
   var changeTimer = 0;
   var preloadState = {};
+  var preloadRunId = 0;
+  var preloadedImages = [];
+  var viewerDocCache = new Map();
+  var preloadAbortController = null;
+  var lastStatusText = '';
+  var observer = null;
 
   function log() {
     if (!LOG || !window.console) return;
@@ -39,8 +45,9 @@
       updateFitStyle();
       applyImageFit();
       updateStatusVisibility();
+      lastStatusText = '';
       lastPreloadRootKey = '';
-      preloadNext();
+      schedulePreloadAfterCurrentImage();
     });
   }
 
@@ -51,10 +58,14 @@
 
   function showStatusLines(lines) {
     if (!settings.showStatus) return;
+    var allLines = (lines || []).concat([getProgressLabel()]);
+    var nextStatusText = allLines.join('\n');
+    if (nextStatusText === lastStatusText) return;
+    lastStatusText = nextStatusText;
+
     var statusEl = getStatusElement();
     statusEl.textContent = '';
 
-    var allLines = (lines || []).concat([getProgressLabel()]);
     for (var i = 0; i < allLines.length; i += 1) {
       var line = document.createElement('div');
       line.className =
@@ -78,6 +89,7 @@
     var el = document.getElementById('eh-helper-status');
     if (!el) return;
     el.style.display = settings.showStatus ? '' : 'none';
+    if (!settings.showStatus) lastStatusText = '';
   }
 
   function getHeadOrRoot() {
@@ -180,7 +192,12 @@
   }
 
   function parsePagePair(text) {
-    var match = String(text || '').match(/(?:^|[^\d])(\d{1,5})\s*\/\s*(\d{1,5})(?=[^\d]|$)/);
+    var normalized = String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (/\.(?:jpg|jpeg|png|gif|webp)\b/i.test(normalized)) return null;
+
+    var match = normalized.match(/^(?:[^\d]*)?(\d{1,5})\s*\/\s*(\d{1,5})(?:[^\d]*)?$/);
     if (!match) return null;
 
     var current = parseInt(match[1], 10);
@@ -196,17 +213,23 @@
   function getPageTextMatch() {
     if (!document.body) return null;
 
+    var pageNodes = document.querySelectorAll('.sn');
+    for (var i = 0; i < pageNodes.length; i += 1) {
+      var parsedPageNode = parsePagePair(pageNodes[i].textContent);
+      if (parsedPageNode) return parsedPageNode;
+    }
+
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     var node;
     while ((node = walker.nextNode())) {
       var text = node.nodeValue.replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 80 || text.indexOf('/') === -1) continue;
+      if (!text || text.length > 32 || text.indexOf('/') === -1) continue;
 
       var parsed = parsePagePair(text);
       if (parsed) return parsed;
     }
 
-    return parsePagePair(document.body.textContent);
+    return null;
   }
 
   function getTotalPageLabel() {
@@ -306,6 +329,22 @@
     for (var i = 0; i < frames.length; i += 1) {
       if (frames[i].parentNode) frames[i].parentNode.removeChild(frames[i]);
     }
+    preloadedImages = [];
+  }
+
+  function pruneViewerDocCache() {
+    while (viewerDocCache.size > 12) {
+      var firstKey = viewerDocCache.keys().next().value;
+      viewerDocCache.delete(firstKey);
+    }
+  }
+
+  function abortActivePreload() {
+    if (preloadAbortController) {
+      preloadAbortController.abort();
+      preloadAbortController = null;
+    }
+    preloadRunId += 1;
   }
 
   function formatDuration(ms) {
@@ -322,7 +361,16 @@
       if (item.status === 'loading') {
         parts.push('EH: +' + i + ' loading p.' + item.page);
       } else if (item.status === 'loaded') {
-        parts.push('EH: +' + i + ' loaded p.' + item.page + ' ' + formatDuration(item.duration));
+        parts.push(
+          'EH: +' +
+            i +
+            ' loaded p.' +
+            item.page +
+            ' ' +
+            formatDuration(item.duration) +
+            ' ' +
+            item.method
+        );
       } else if (item.status === 'failed') {
         parts.push('EH: +' + i + ' failed p.' + item.page);
       }
@@ -331,70 +379,200 @@
     if (parts.length) showStatusLines(parts);
   }
 
-  function createHiddenFrame(nextUrl, depth, onLoaded) {
-    var startedAt = Date.now();
-    preloadState[depth] = {
-      status: 'loading',
-      page: getViewerPageFromUrl(nextUrl) || getUrlTail(nextUrl),
-      duration: 0,
-      url: nextUrl
-    };
+  function setPreloadState(depth, patch) {
+    preloadState[depth] = Object.assign(preloadState[depth] || {}, patch);
     updatePreloadStatus();
+  }
 
-    var frameEl = document.createElement('iframe');
-    frameEl.className = 'eh-helper-preload-frame';
-    frameEl.id = 'eh-helper-preload-frame-' + depth;
-    frameEl.src = nextUrl;
-    frameEl.setAttribute('loading', 'eager');
-    frameEl.setAttribute('referrerpolicy', 'same-origin');
+  function getImageUrlFromDocument(doc, docUrl) {
+    var img = doc.getElementById('img');
+    if (!img) return '';
 
-    frameEl.addEventListener(
-      'load',
-      function () {
-        preloadState[depth].status = 'loaded';
-        preloadState[depth].duration = Date.now() - startedAt;
-        updatePreloadStatus();
-        if (typeof onLoaded === 'function') onLoaded(frameEl);
-      },
-      { once: true }
-    );
+    var src = img.getAttribute('src') || img.src || '';
+    if (!src) return '';
 
-    frameEl.addEventListener(
-      'error',
-      function () {
-        preloadState[depth].status = 'failed';
-        preloadState[depth].duration = Date.now() - startedAt;
-        updatePreloadStatus();
-      },
-      { once: true }
-    );
+    try {
+      return new URL(src, docUrl).href;
+    } catch (error) {
+      log('cannot resolve image url:', error);
+      return src;
+    }
+  }
 
-    document.documentElement.appendChild(frameEl);
-    return frameEl;
+  function getPageLabelFromDocument(doc, fallbackUrl) {
+    var pageNode = doc.querySelector('.sn');
+    var parsed = parsePagePair(pageNode ? pageNode.textContent : '');
+    return parsed ? parsed.current : getViewerPageFromUrl(fallbackUrl) || getUrlTail(fallbackUrl);
+  }
+
+  function fetchViewerDocument(pageUrl, signal) {
+    var cached = viewerDocCache.get(pageUrl);
+    if (cached) return Promise.resolve(cached);
+
+    return fetch(pageUrl, {
+      credentials: 'include',
+      cache: 'force-cache',
+      signal: signal
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('fetch failed: ' + res.status);
+        return res.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        viewerDocCache.set(pageUrl, doc);
+        pruneViewerDocCache();
+        return doc;
+      });
+  }
+
+  function preloadImage(imageUrl) {
+    return new Promise(function (resolve, reject) {
+      var image = new Image();
+      var timeout = window.setTimeout(function () {
+        reject(new Error('image preload timeout'));
+      }, 8000);
+
+      image.onload = function () {
+        window.clearTimeout(timeout);
+        resolve();
+      };
+      image.onerror = function () {
+        window.clearTimeout(timeout);
+        reject(new Error('image preload failed'));
+      };
+      image.decoding = 'async';
+      image.src = imageUrl;
+      preloadedImages.push(image);
+    });
+  }
+
+  function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
+    return new Promise(function (resolve) {
+      if (runId !== preloadRunId) {
+        resolve('');
+        return;
+      }
+
+      setPreloadState(depth, {
+        status: 'loading',
+        page: getViewerPageFromUrl(nextUrl) || getUrlTail(nextUrl),
+        duration: 0,
+        url: nextUrl,
+        method: 'iframe'
+      });
+
+      var frameEl = document.createElement('iframe');
+      frameEl.className = 'eh-helper-preload-frame';
+      frameEl.id = 'eh-helper-preload-frame-' + depth;
+      frameEl.src = nextUrl;
+      frameEl.setAttribute('loading', 'eager');
+      frameEl.setAttribute('referrerpolicy', 'same-origin');
+
+      frameEl.addEventListener(
+        'load',
+        function () {
+          var followingUrl = '';
+          if (runId !== preloadRunId) {
+            frameEl.remove();
+            resolve('');
+            return;
+          }
+
+          try {
+            var frameDoc = frameEl.contentDocument || frameEl.contentWindow.document;
+            var page = getPageLabelFromDocument(frameDoc, nextUrl);
+            followingUrl = getNextPageUrlFromDocument(frameDoc, nextUrl);
+            setPreloadState(depth, {
+              status: 'loaded',
+              page: page,
+              duration: Date.now() - startedAt,
+              method: 'iframe'
+            });
+          } catch (error) {
+            log('cannot read hidden frame document:', error);
+            setPreloadState(depth, {
+              status: 'failed',
+              duration: Date.now() - startedAt,
+              method: 'iframe'
+            });
+          }
+
+          frameEl.remove();
+          resolve(followingUrl);
+        },
+        { once: true }
+      );
+
+      frameEl.addEventListener(
+        'error',
+        function () {
+          if (runId === preloadRunId) {
+            setPreloadState(depth, {
+              status: 'failed',
+              duration: Date.now() - startedAt,
+              method: 'iframe'
+            });
+          }
+          frameEl.remove();
+          resolve('');
+        },
+        { once: true }
+      );
+
+      document.documentElement.appendChild(frameEl);
+    });
   }
 
   function preloadAheadFrom(nextUrl, depth) {
     if (!nextUrl || depth > settings.preloadAheadCount) return;
 
-    createHiddenFrame(nextUrl, depth, function (frameEl) {
-      var frameDoc = null;
-      try {
-        frameDoc = frameEl.contentDocument || frameEl.contentWindow.document;
-      } catch (error) {
-        log('cannot read hidden frame document:', error);
-      }
-
-      if (!frameDoc) return;
-
-      var followingUrl = getNextPageUrlFromDocument(frameDoc, nextUrl);
-      if (!followingUrl || normalizeUrl(followingUrl) === normalizeUrl(nextUrl)) return;
-
-      preloadAheadFrom(followingUrl, depth + 1);
+    var runId = preloadRunId;
+    var startedAt = Date.now();
+    setPreloadState(depth, {
+      status: 'loading',
+      page: getViewerPageFromUrl(nextUrl) || getUrlTail(nextUrl),
+      duration: 0,
+      url: nextUrl,
+      method: 'fetch'
     });
+
+    fetchViewerDocument(nextUrl, preloadAbortController ? preloadAbortController.signal : undefined)
+      .then(function (doc) {
+        if (runId !== preloadRunId) return '';
+
+        var page = getPageLabelFromDocument(doc, nextUrl);
+        var imageUrl = getImageUrlFromDocument(doc, nextUrl);
+        var followingUrl = getNextPageUrlFromDocument(doc, nextUrl);
+
+        if (!imageUrl) throw new Error('next image url not found');
+
+        return preloadImage(imageUrl).then(function () {
+          if (runId !== preloadRunId) return '';
+          setPreloadState(depth, {
+            status: 'loaded',
+            page: page,
+            duration: Date.now() - startedAt,
+            method: 'img'
+          });
+          return followingUrl;
+        });
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') return '';
+        log('fetch/image preload failed, falling back to iframe:', error);
+        return preloadByHiddenFrame(nextUrl, depth, startedAt, runId);
+      })
+      .then(function (followingUrl) {
+        if (runId !== preloadRunId) return;
+        if (!followingUrl || normalizeUrl(followingUrl) === normalizeUrl(nextUrl)) return;
+        preloadAheadFrom(followingUrl, depth + 1);
+      });
   }
 
   function preloadNext() {
     if (settings.preloadAheadCount <= 0) {
+      abortActivePreload();
       removeOldPreloadFrames();
       preloadState = {};
       showStatus('EH: preload off');
@@ -404,6 +582,8 @@
     var rootKey = getCurrentKey();
     if (rootKey === lastPreloadRootKey) return;
     lastPreloadRootKey = rootKey;
+    abortActivePreload();
+    preloadAbortController = new AbortController();
     removeOldPreloadFrames();
     preloadState = {};
 
@@ -415,6 +595,22 @@
     preloadAheadFrom(nextUrl, 1);
   }
 
+  function schedulePreloadAfterCurrentImage() {
+    var img = getMainImage();
+    if (!img || img.complete) {
+      window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
+      return;
+    }
+
+    img.addEventListener(
+      'load',
+      function () {
+        window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
+      },
+      { once: true }
+    );
+  }
+
   function handlePageStateChange(reason) {
     clearTimeout(changeTimer);
     changeTimer = window.setTimeout(function () {
@@ -424,7 +620,7 @@
 
       log('handling page state:', reason, key);
       scrollToImage();
-      window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
+      schedulePreloadAfterCurrentImage();
     }, CHANGE_DEBOUNCE_MS);
   }
 
@@ -440,7 +636,9 @@
   }
 
   function observeImageAndDomChanges() {
-    var observer = new MutationObserver(function (mutations) {
+    if (observer) observer.disconnect();
+
+    observer = new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i += 1) {
         if (mutations[i].type === 'childList' || mutations[i].type === 'attributes') {
           handlePageStateChange('mutation');
@@ -449,14 +647,24 @@
       }
     });
 
-    if (!document.documentElement) return;
+    var targets = [];
+    var img = getMainImage();
+    if (img) targets.push(img);
+    var imageContainer = document.getElementById('i3');
+    if (imageContainer) targets.push(imageContainer);
+    var pageContainer = document.getElementById('i1');
+    if (pageContainer) targets.push(pageContainer);
 
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['src', 'href']
-    });
+    if (!targets.length && document.body) targets.push(document.body);
+
+    for (var i = 0; i < targets.length; i += 1) {
+      observer.observe(targets[i], {
+        childList: true,
+        subtree: targets[i].id !== 'img',
+        attributes: true,
+        attributeFilter: ['src', 'href']
+      });
+    }
   }
 
   function setupMessageHandlers() {
