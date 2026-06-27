@@ -27,22 +27,39 @@ jobs:
         run: npm ci
       - name: Check package
         run: npm run check
+      - name: Check release version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./addon/manifest.json').version")
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists. Skipping signing."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Sign unlisted add-on
+        if: steps.version.outputs.exists != 'true'
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: npm run addon:sign
       - name: Prepare release update manifest
+        if: steps.version.outputs.exists != 'true'
         id: release
         run: |
-          VERSION=$(node -p "require('./addon/manifest.json').version")
+          VERSION="${{ steps.version.outputs.version }}"
           XPI=$(find dist -maxdepth 1 -name '*.xpi' -type f | head -n 1)
           if [ -z "$XPI" ]; then
             echo "No signed XPI found in dist" >&2
             exit 1
           fi
           XPI_NAME=$(basename "$XPI")
-          TAG="v$VERSION"
+          TAG="${{ steps.version.outputs.tag }}"
           UPDATE_LINK="https://github.com/Anpontant/e-hentai-helper/releases/download/$TAG/$XPI_NAME"
           cat > dist/updates.json <<EOF
           {
@@ -62,6 +79,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "xpi=$XPI" >> "$GITHUB_OUTPUT"
       - name: Publish GitHub release
+        if: steps.version.outputs.exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -76,6 +94,7 @@ jobs:
               --notes "Signed Firefox add-on release $VERSION."
           fi
       - name: Upload signed artifacts
+        if: steps.version.outputs.exists != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: signed-addon
