@@ -34,4 +34,13 @@ Before committing, run the relevant checks. For normal code changes, run:
 npm run check
 ```
 
+Codex hooks for this repository call:
+
+```bash
+scripts/codex-hooks/check-on-stop.sh
+```
+
+The hook is intended to run `npm run check` automatically at Codex `Stop` when
+repository files were changed. If it fails, fix the issue before committing.
+
 Do not commit unrelated user changes unless explicitly asked.
