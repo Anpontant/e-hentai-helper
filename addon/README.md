@@ -13,6 +13,10 @@ Development-only Firefox extension for E-Hentai viewer pages.
 Temporary add-ons are removed when Firefox restarts. Use the signing flow below
 for normal daily use.
 
+For local development, prefer the `web-ext run` workflow documented in
+`docs/DEVELOPMENT.ja.md`. It lets you test the add-on locally before pushing to
+GitHub.
+
 ## Install Permanently On Your PCs
 
 Firefox Stable requires installed extensions to be signed. For a private helper
