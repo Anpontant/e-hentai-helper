@@ -2,21 +2,20 @@ name: Sign Add-on
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Version Bump
-    types:
-      - completed
+  push:
     branches:
       - main
       - master
+    paths:
+      - addon/manifest.json
+      - package.json
+      - package-lock.json
 
 permissions:
   contents: write
 
 jobs:
   sign:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,13 +25,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Check JavaScript syntax
-        run: |
-          node --check addon/content/content.js
-          node --check addon/popup/popup.js
-          node --check scripts/bump-version.mjs
-      - name: Build package
-        run: npm run addon:build
+      - name: Check package
+        run: npm run check
       - name: Sign unlisted add-on
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}

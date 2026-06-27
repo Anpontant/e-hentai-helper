@@ -54,10 +54,11 @@
     var statusEl = getStatusElement();
     statusEl.textContent = '';
 
-    var allLines = [getProgressLabel()].concat(lines || []);
+    var allLines = (lines || []).concat([getProgressLabel()]);
     for (var i = 0; i < allLines.length; i += 1) {
       var line = document.createElement('div');
-      line.className = i === 0 ? 'eh-helper-status-progress' : 'eh-helper-status-line';
+      line.className =
+        i === allLines.length - 1 ? 'eh-helper-status-progress' : 'eh-helper-status-line';
       line.textContent = allLines[i];
       statusEl.appendChild(line);
     }
@@ -178,24 +179,46 @@
     return match ? match[1] : '';
   }
 
-  function getPageTextMatch() {
-    if (!document.body) return null;
-    return document.body.textContent.match(/(?:^|\D)(\d+)\s*\/\s*(\d+)(?:\D|$)/);
+  function parsePagePair(text) {
+    var match = String(text || '').match(/(?:^|[^\d])(\d{1,5})\s*\/\s*(\d{1,5})(?=[^\d]|$)/);
+    if (!match) return null;
+
+    var current = parseInt(match[1], 10);
+    var total = parseInt(match[2], 10);
+    if (!current || !total || current > total) return null;
+
+    return {
+      current: String(current),
+      total: String(total)
+    };
   }
 
-  function getCurrentPageLabel() {
-    var fromUrl = getViewerPageFromUrl(location.href);
-    if (fromUrl) return fromUrl;
+  function getPageTextMatch() {
+    if (!document.body) return null;
 
-    var pageText = getPageTextMatch();
-    if (pageText) return pageText[1] + '/' + pageText[2];
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var node;
+    while ((node = walker.nextNode())) {
+      var text = node.nodeValue.replace(/\s+/g, ' ').trim();
+      if (!text || text.length > 80 || text.indexOf('/') === -1) continue;
 
-    return '?';
+      var parsed = parsePagePair(text);
+      if (parsed) return parsed;
+    }
+
+    return parsePagePair(document.body.textContent);
   }
 
   function getTotalPageLabel() {
     var pageText = getPageTextMatch();
-    return pageText ? pageText[2] : '?';
+    var total = pageText ? pageText.total : '';
+    var current = parseInt(
+      getViewerPageFromUrl(location.href) || (pageText ? pageText.current : ''),
+      10
+    );
+
+    if (total && (!current || parseInt(total, 10) >= current)) return total;
+    return '?';
   }
 
   function getProgressLabel() {
@@ -203,7 +226,7 @@
     var total = getTotalPageLabel();
     if (!current) {
       var pageText = getPageTextMatch();
-      current = pageText ? pageText[1] : '?';
+      current = pageText ? pageText.current : '?';
     }
     return 'Page ' + current + '/' + total;
   }
@@ -220,9 +243,8 @@
 
   function getNextPageUrlFromDocument(doc, docUrl) {
     var img = doc.getElementById('img');
-    var fromImageLink = img && img.parentNode && img.parentNode.tagName === 'A'
-      ? img.parentNode.href
-      : '';
+    var fromImageLink =
+      img && img.parentNode && img.parentNode.tagName === 'A' ? img.parentNode.href : '';
 
     if (isViewerUrl(fromImageLink) && normalizeUrl(fromImageLink) !== normalizeUrl(docUrl)) {
       return fromImageLink;
@@ -326,18 +348,26 @@
     frameEl.setAttribute('loading', 'eager');
     frameEl.setAttribute('referrerpolicy', 'same-origin');
 
-    frameEl.addEventListener('load', function () {
-      preloadState[depth].status = 'loaded';
-      preloadState[depth].duration = Date.now() - startedAt;
-      updatePreloadStatus();
-      if (typeof onLoaded === 'function') onLoaded(frameEl);
-    }, { once: true });
+    frameEl.addEventListener(
+      'load',
+      function () {
+        preloadState[depth].status = 'loaded';
+        preloadState[depth].duration = Date.now() - startedAt;
+        updatePreloadStatus();
+        if (typeof onLoaded === 'function') onLoaded(frameEl);
+      },
+      { once: true }
+    );
 
-    frameEl.addEventListener('error', function () {
-      preloadState[depth].status = 'failed';
-      preloadState[depth].duration = Date.now() - startedAt;
-      updatePreloadStatus();
-    }, { once: true });
+    frameEl.addEventListener(
+      'error',
+      function () {
+        preloadState[depth].status = 'failed';
+        preloadState[depth].duration = Date.now() - startedAt;
+        updatePreloadStatus();
+      },
+      { once: true }
+    );
 
     document.documentElement.appendChild(frameEl);
     return frameEl;

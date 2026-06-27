@@ -38,17 +38,17 @@ Manual version bump:
 
 ```bash
 npm run version:patch
-```
-
-GitHub Actions also bumps the patch version automatically after a push to
-`main` or `master`. The workflow creates a follow-up commit with
-`[skip version]`, so pull after pushing before building the next signed package.
-
-```bash
+git add addon/manifest.json package.json package-lock.json
+git commit -m "chore: bump version"
 git push
-git pull
-npm run addon:build
 ```
+
+Version bumps are manual. The repository intentionally avoids automatic version
+commits after every push, because that creates remote-only commits and forces
+frequent rebases.
+
+Run `npm run version:patch`, `npm run version:minor`, or `npm run version:major`
+only when you want to release a new signed package.
 
 If this is a new repository:
 
@@ -61,7 +61,7 @@ git remote add origin <your-repository-url>
 git push -u origin main
 ```
 
-For the automatic version bump workflow, enable write access for GitHub Actions:
+For release publishing, enable write access for GitHub Actions:
 
 1. Open the repository settings on GitHub.
 2. Go to `Actions` -> `General`.
@@ -76,10 +76,9 @@ unlisted signing flow.
 2. Add these GitHub repository secrets:
    - `AMO_JWT_ISSUER`
    - `AMO_JWT_SECRET`
-3. Push to `main` or `master`.
-4. Wait for `Version Bump` to finish.
-5. `Sign Add-on` runs after the version bump, uploads the signed artifact, and
-   publishes a GitHub Release.
+3. Bump the version manually and push the version commit.
+4. `Sign Add-on` runs when version files change, uploads the signed artifact,
+   and publishes a GitHub Release.
 
 You can also run `Sign Add-on` manually from the GitHub Actions page.
 

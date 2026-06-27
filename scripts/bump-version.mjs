@@ -25,7 +25,9 @@ function writeJson(file, data) {
 }
 
 function bump(version) {
-  const parts = String(version || '0.0.0').split('.').map((part) => parseInt(part, 10));
+  const parts = String(version || '0.0.0')
+    .split('.')
+    .map((part) => parseInt(part, 10));
   while (parts.length < 3) parts.push(0);
 
   if (release === 'major') {

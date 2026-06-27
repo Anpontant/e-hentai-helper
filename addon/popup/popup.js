@@ -38,12 +38,14 @@
   function sendToContent(type) {
     return queryActiveTab().then(function (tab) {
       if (!tab || !tab.id) return null;
-      return browser.tabs.sendMessage(tab.id, {
-        target: 'eh-helper-content',
-        type: type
-      }).catch(function () {
-        return null;
-      });
+      return browser.tabs
+        .sendMessage(tab.id, {
+          target: 'eh-helper-content',
+          type: type
+        })
+        .catch(function () {
+          return null;
+        });
     });
   }
 
@@ -73,7 +75,8 @@
   }
 
   function savePatch(patch) {
-    return browser.storage.local.set(patch)
+    return browser.storage.local
+      .set(patch)
       .then(function () {
         return browser.storage.local.get(DEFAULT_SETTINGS);
       })
