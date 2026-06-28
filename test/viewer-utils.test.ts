@@ -77,7 +77,8 @@ describe('normalizeSettings', () => {
     overlayView: false,
     spreadView: false,
     spreadCoverAlone: true,
-    showPreloadThumbs: false
+    showPreloadThumbs: false,
+    exhRedirect: false
   };
 
   test('merges defaults and clamps invalid values', () => {
@@ -192,6 +193,81 @@ describe('getSpreadPageInfo', () => {
     const neg = utils.getSpreadPageInfo(-1, 40, false);
     expect(neg.partnerPage).toBeNull();
     expect(neg.isRightPage).toBe(true);
+  });
+});
+
+describe('resolveSpreadPage', () => {
+  const total = 40;
+
+  test('right page resolves to itself', () => {
+    const r = utils.resolveSpreadPage(4, total, true);
+    expect(r.rightPage).toBe(4);
+    expect(r.info.partnerPage).toBe(5);
+
+    const r2 = utils.resolveSpreadPage(3, total, false);
+    expect(r2.rightPage).toBe(3);
+    expect(r2.info.partnerPage).toBe(4);
+  });
+
+  test('left page snaps backward to include current page', () => {
+    const r = utils.resolveSpreadPage(3, total, true);
+    expect(r.rightPage).toBe(2);
+    expect(r.info.partnerPage).toBe(3);
+
+    const r2 = utils.resolveSpreadPage(4, total, false);
+    expect(r2.rightPage).toBe(3);
+    expect(r2.info.partnerPage).toBe(4);
+  });
+
+  test('coverAlone toggle round-trips to the same spread', () => {
+    for (const vp of [2, 3, 4, 5, 6, 7, 10, 20]) {
+      const onResult = utils.resolveSpreadPage(vp, total, true);
+      const offResult = utils.resolveSpreadPage(vp, total, false);
+      const backOn = utils.resolveSpreadPage(vp, total, true);
+      const backOff = utils.resolveSpreadPage(vp, total, false);
+
+      expect(backOn.rightPage).toBe(onResult.rightPage);
+      expect(backOn.info.partnerPage).toBe(onResult.info.partnerPage);
+      expect(backOff.rightPage).toBe(offResult.rightPage);
+      expect(backOff.info.partnerPage).toBe(offResult.info.partnerPage);
+    }
+  });
+
+  test('displayed spread always contains the virtual page', () => {
+    for (const vp of [1, 2, 3, 4, 5, 6, 10, 20, 39, 40]) {
+      for (const coverAlone of [true, false]) {
+        const r = utils.resolveSpreadPage(vp, total, coverAlone);
+        const displayed = [r.rightPage];
+        if (r.info.partnerPage) displayed.push(r.info.partnerPage);
+        expect(displayed).toContain(vp);
+      }
+    }
+  });
+
+  test('page 1 with coverAlone=true is single', () => {
+    const r = utils.resolveSpreadPage(1, total, true);
+    expect(r.rightPage).toBe(1);
+    expect(r.info.partnerPage).toBeNull();
+    expect(r.info.pagesInSpread).toBe(1);
+  });
+
+  test('advance from resolved spread lands on the next spread', () => {
+    const r = utils.resolveSpreadPage(4, total, true);
+    expect(r.rightPage).toBe(4);
+    const next = r.rightPage + r.info.pagesInSpread;
+    const r2 = utils.resolveSpreadPage(next, total, true);
+    expect(r2.rightPage).toBe(6);
+    expect(r2.info.partnerPage).toBe(7);
+  });
+
+  test('advance works when virtualPage is a left page', () => {
+    const vp = 4;
+    const info = utils.getSpreadPageInfo(vp, total, false);
+    expect(info.isRightPage).toBe(false);
+    const target = vp + info.pagesInSpread;
+    const r = utils.resolveSpreadPage(target, total, false);
+    expect(r.rightPage).toBe(5);
+    expect(r.info.partnerPage).toBe(6);
   });
 });
 
