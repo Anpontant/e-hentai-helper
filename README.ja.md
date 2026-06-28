@@ -33,7 +33,7 @@ npm run addon:build
 npm run version:patch
 ```
 
-GitHub Actionsを設定している場合、`main` へpushするとpatch versionの更新、AMO署名、GitHub Release作成を自動化できます。
+バージョンは `npm run version:patch`（または `minor` / `major`）で手動更新します。自動更新は行いません。バージョンを更新したコミットを `main` へpushすると、GitHub Actions（`.github/workflows/sign-addon.yml`）がAMO署名とGitHub Release作成を自動で行います。
 
 ## プライバシー
 
