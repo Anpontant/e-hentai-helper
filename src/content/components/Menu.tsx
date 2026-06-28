@@ -4,6 +4,7 @@ import { saveSetting } from '../settings.js';
 import { scrollToImage } from '../scroll.js';
 import { Segmented } from '../../shared/components/Segmented.jsx';
 import { Checkbox } from '../../shared/components/Checkbox.jsx';
+import { NumberInput } from '../../shared/components/NumberInput.jsx';
 
 function msg(key: string) {
   return browser.i18n.getMessage(key) || key;
@@ -14,17 +15,13 @@ function MenuPanel() {
     <div id="eh-helper-menu-panel" style={{ display: 'grid' }}>
       <div class="eh-menu-section">
         <div class="eh-menu-label">{msg('popupPreload')}</div>
-        <Segmented
+        <NumberInput
           setting="preloadAheadCount"
-          current={settings.value.preloadAheadCount}
+          value={settings.value.preloadAheadCount}
+          min={0}
+          max={5}
           onSave={saveSetting}
-          className="eh-menu-seg"
-          options={[
-            { value: '0', label: msg('popupOff') },
-            { value: '1', label: '+1' },
-            { value: '2', label: '+2' },
-            { value: '3', label: '+3' }
-          ]}
+          className="eh-menu-number-input"
         />
         <div class="eh-menu-group-checks">
           <Checkbox
