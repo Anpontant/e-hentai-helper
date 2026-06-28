@@ -1,6 +1,7 @@
 import type { FitMode, PagePair, Settings, SpreadPageInfo } from './types.js';
 
-export const PRELOAD_OPTIONS = [0, 1, 2, 3];
+export const PRELOAD_MIN = 0;
+export const PRELOAD_MAX = 5;
 export const FIT_OPTIONS: FitMode[] = ['height', 'width', 'original'];
 
 export function normalizeUrl(url: string) {
@@ -93,9 +94,13 @@ export function resolveSpreadPage(
 
 export function normalizeSettings(stored: Partial<Settings>, defaults: Settings): Settings {
   const settings = Object.assign({}, defaults, stored || {});
-  if (PRELOAD_OPTIONS.indexOf(settings.preloadAheadCount) === -1) {
-    settings.preloadAheadCount = defaults.preloadAheadCount;
-  }
+  settings.preloadAheadCount = Math.max(
+    PRELOAD_MIN,
+    Math.min(
+      PRELOAD_MAX,
+      Math.floor(Number(settings.preloadAheadCount) || defaults.preloadAheadCount)
+    )
+  );
   if (FIT_OPTIONS.indexOf(settings.fitMode) === -1) {
     settings.fitMode = defaults.fitMode;
   }

@@ -21,7 +21,7 @@ export function Segmented({ setting, options, current, onSave, className }: Segm
             type="button"
             class={String(current) === String(opt.value) ? 'active' : ''}
             onClick={function () {
-              const val = setting === 'preloadAheadCount' ? parseInt(opt.value, 10) : opt.value;
+              const val = opt.value;
               onSave({ [setting]: val });
             }}
           >

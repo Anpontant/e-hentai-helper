@@ -90,7 +90,7 @@ describe('normalizeSettings', () => {
     expect(utils.normalizeSettings({ preloadAheadCount: 3 }, defaults).preloadAheadCount).toBe(3);
     expect(utils.normalizeSettings({ fitMode: 'width' }, defaults).fitMode).toBe('width');
 
-    expect(utils.normalizeSettings({ preloadAheadCount: 99 }, defaults).preloadAheadCount).toBe(2);
+    expect(utils.normalizeSettings({ preloadAheadCount: 99 }, defaults).preloadAheadCount).toBe(5);
     expect(
       utils.normalizeSettings({ fitMode: 'bogus' as unknown as 'height' }, defaults).fitMode
     ).toBe('height');

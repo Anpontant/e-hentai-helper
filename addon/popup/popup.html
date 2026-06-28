@@ -10,11 +10,8 @@
     <main class="popup">
       <section class="group">
         <div class="label" data-i18n="popupPreload"></div>
-        <div class="segmented" data-setting="preloadAheadCount">
-          <button type="button" data-value="0" data-i18n="popupOff"></button>
-          <button type="button" data-value="1">+1</button>
-          <button type="button" data-value="2">+2</button>
-          <button type="button" data-value="3">+3</button>
+        <div class="number-input-row">
+          <input type="number" id="preloadAheadCount" min="0" max="5" step="1" />
         </div>
         <div class="group-checks">
           <label

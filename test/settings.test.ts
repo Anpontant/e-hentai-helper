@@ -26,7 +26,7 @@ describe('loadSettings', () => {
     await browser.storage.local.set({ fitMode: 'invalid', preloadAheadCount: 99 });
     await loadSettings();
     expect(settings.value.fitMode).toBe('height');
-    expect(settings.value.preloadAheadCount).toBe(2);
+    expect(settings.value.preloadAheadCount).toBe(5);
   });
 });
 

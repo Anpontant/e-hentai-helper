@@ -39,6 +39,11 @@ function updateUI() {
     });
   });
 
+  const preloadInput = document.getElementById('preloadAheadCount') as HTMLInputElement | null;
+  if (preloadInput) {
+    preloadInput.value = String(settings.preloadAheadCount);
+  }
+
   document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(function (input) {
     if (input.id in settings) {
       input.checked = settings[input.id as keyof Settings] as boolean;
@@ -89,11 +94,18 @@ function init() {
         }
         return;
       }
-      const val =
-        key === 'preloadAheadCount' ? parseInt(btn.dataset.value!, 10) : btn.dataset.value!;
-      savePatch({ [key]: val } as Partial<Settings>);
+      savePatch({ [key]: btn.dataset.value! } as Partial<Settings>);
     });
   });
+
+  const preloadInput = document.getElementById('preloadAheadCount') as HTMLInputElement | null;
+  if (preloadInput) {
+    preloadInput.addEventListener('change', function () {
+      const val = Math.max(0, Math.min(5, Math.floor(Number(preloadInput.value) || 0)));
+      preloadInput.value = String(val);
+      savePatch({ preloadAheadCount: val });
+    });
+  }
 
   document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(function (input) {
     if (input.id in DEFAULT_SETTINGS) {
