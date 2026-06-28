@@ -158,6 +158,24 @@ function navigateViaGalleryMap(targetPage, fallback) {
     });
 }
 
+function fetchAndNavigate(adjacentUrl, getUrlFromDoc) {
+  var cached = viewerDocCache.get(adjacentUrl);
+  if (cached) {
+    var target = getUrlFromDoc(cached, adjacentUrl);
+    location.href = target || adjacentUrl;
+    return;
+  }
+
+  fetchViewerDocument(adjacentUrl)
+    .then(function (doc) {
+      var target = getUrlFromDoc(doc, adjacentUrl);
+      location.href = target || adjacentUrl;
+    })
+    .catch(function () {
+      location.href = adjacentUrl;
+    });
+}
+
 export function advanceSpread() {
   var s = settings.value;
   var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
@@ -184,21 +202,7 @@ export function advanceSpread() {
     var partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
     if (!partnerUrl) return;
 
-    var cached = viewerDocCache.get(partnerUrl);
-    if (cached) {
-      var target = getNextPageUrlFromDocument(cached, partnerUrl);
-      location.href = target || partnerUrl;
-      return;
-    }
-
-    fetchViewerDocument(partnerUrl)
-      .then(function (doc) {
-        var target = getNextPageUrlFromDocument(doc, partnerUrl);
-        location.href = target || partnerUrl;
-      })
-      .catch(function () {
-        location.href = partnerUrl;
-      });
+    fetchAndNavigate(partnerUrl, getNextPageUrlFromDocument);
   });
 }
 
@@ -222,21 +226,7 @@ export function retreatSpread() {
       return;
     }
 
-    var cached = viewerDocCache.get(prevUrl);
-    if (cached) {
-      var target = getPrevPageUrlFromDocument(cached, prevUrl);
-      location.href = target || prevUrl;
-      return;
-    }
-
-    fetchViewerDocument(prevUrl)
-      .then(function (doc) {
-        var target = getPrevPageUrlFromDocument(doc, prevUrl);
-        location.href = target || prevUrl;
-      })
-      .catch(function () {
-        location.href = prevUrl;
-      });
+    fetchAndNavigate(prevUrl, getPrevPageUrlFromDocument);
   });
 }
 
