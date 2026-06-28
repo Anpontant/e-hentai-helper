@@ -1,6 +1,6 @@
 {
   "name": "e-hentai-helper",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:prod": "node scripts/build.mjs --prod",

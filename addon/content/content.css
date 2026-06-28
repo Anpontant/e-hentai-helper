@@ -113,6 +113,36 @@
   object-fit: contain;
 }
 
+.eh-retry-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: rgba(255, 255, 255, 0.5);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.eh-retry-left {
+  left: 0;
+  right: 50%;
+}
+
+.eh-retry-right {
+  left: 50%;
+  right: 0;
+}
+
+.eh-retry-single {
+  left: 0;
+  right: 0;
+}
+
 #eh-helper-spread-overlay.eh-spread-single #eh-helper-spread-left {
   display: none;
 }

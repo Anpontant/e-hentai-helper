@@ -13,6 +13,7 @@ import {
   getImageUrlFromDocument,
   getTotalPageLabel,
   fetchViewerDocument,
+  viewerDocCache,
   pageUrlMap,
   pageImageMap,
   persistPageMaps,
@@ -245,11 +246,58 @@ export function advanceSpread() {
 }
 
 export function retreatSpread() {
+  const s = settings.value;
   const currentPage = virtualPage.value || parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-  const targetPage = Math.max(1, currentPage - 2);
+  const step = s.spreadView ? 2 : 1;
+  const targetPage = Math.max(1, currentPage - step);
   if (targetPage >= currentPage) return;
 
   renderSpreadAtPage(targetPage);
+}
+
+export function retryImage(side: 'left' | 'right') {
+  const rightPage = virtualPage.value;
+  if (!rightPage) return;
+
+  const s = settings.value;
+  const total = totalPages.value;
+
+  let page: number;
+  if (side === 'right') {
+    page = rightPage;
+  } else {
+    const info = s.spreadView
+      ? getSpreadPageInfo(rightPage, total, s.spreadCoverAlone)
+      : { partnerPage: null, pagesInSpread: 1, isRightPage: true };
+    if (!info.partnerPage) return;
+    page = info.partnerPage;
+  }
+
+  delete pageImageMap[page];
+  const pageUrl = pageUrlMap[page];
+  if (!pageUrl) return;
+
+  viewerDocCache.delete(pageUrl);
+
+  fetch(pageUrl, { credentials: 'include', cache: 'reload' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('fetch failed: ' + res.status);
+      return res.text();
+    })
+    .then(function (html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      viewerDocCache.set(pageUrl, doc);
+      const imageUrl = getImageUrlFromDocument(doc, pageUrl);
+      if (!imageUrl) return;
+      pageImageMap[page] = imageUrl;
+      persistPageMaps();
+      if (side === 'right') {
+        spreadState.value = { ...spreadState.value, rightSrc: imageUrl, rightFallbackSrc: '' };
+      } else {
+        spreadState.value = { ...spreadState.value, leftSrc: imageUrl };
+      }
+    })
+    .catch(function () {});
 }
 
 export function exitOverlay() {

@@ -165,7 +165,7 @@ document.addEventListener('keydown', function (event) {
       exitOverlay();
     }
   }
-  if (isOverlayActive() && settings.value.spreadView) {
+  if (isOverlayActive()) {
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       event.stopPropagation();

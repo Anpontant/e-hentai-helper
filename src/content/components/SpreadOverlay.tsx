@@ -1,10 +1,16 @@
 import { useEffect } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import { spreadState, settings } from '../state.js';
-import { advanceSpread, retreatSpread, exitOverlay } from '../spread.js';
+import { advanceSpread, retreatSpread, exitOverlay, retryImage } from '../spread.js';
 import { applySpreadFit } from '../fit.js';
+
+const leftError = signal(false);
+const rightError = signal(false);
 
 export function SpreadOverlay() {
   const state = spreadState.value;
+  const hasLeftError = leftError.value;
+  const hasRightError = rightError.value;
 
   useEffect(
     function () {
@@ -13,6 +19,20 @@ export function SpreadOverlay() {
       }
     },
     [state.active, state.single, settings.value.fitMode]
+  );
+
+  useEffect(
+    function () {
+      leftError.value = false;
+    },
+    [state.leftSrc]
+  );
+
+  useEffect(
+    function () {
+      rightError.value = false;
+    },
+    [state.rightSrc]
   );
 
   if (!state.active) return null;
@@ -46,6 +66,10 @@ export function SpreadOverlay() {
     }
   }
 
+  function handleLeftError() {
+    leftError.value = true;
+  }
+
   function handleRightError() {
     if (state.rightFallbackSrc && state.rightSrc !== state.rightFallbackSrc) {
       spreadState.value = {
@@ -53,7 +77,9 @@ export function SpreadOverlay() {
         rightSrc: state.rightFallbackSrc,
         rightFallbackSrc: ''
       };
+      return;
     }
+    rightError.value = true;
   }
 
   return (
@@ -66,12 +92,34 @@ export function SpreadOverlay() {
       <button id="eh-helper-spread-close" onClick={handleClose}>
         ×
       </button>
-      <img id="eh-helper-spread-left" src={state.leftSrc || undefined} />
+      <img id="eh-helper-spread-left" src={state.leftSrc || undefined} onError={handleLeftError} />
       <img
         id="eh-helper-spread-right"
         src={state.rightSrc || undefined}
         onError={handleRightError}
       />
+      {hasLeftError && !state.single && (
+        <button
+          class="eh-retry-hint eh-retry-left"
+          onClick={function (e) {
+            e.stopPropagation();
+            retryImage('left');
+          }}
+        >
+          {'↻'}
+        </button>
+      )}
+      {hasRightError && (
+        <button
+          class={'eh-retry-hint' + (state.single ? ' eh-retry-single' : ' eh-retry-right')}
+          onClick={function (e) {
+            e.stopPropagation();
+            retryImage('right');
+          }}
+        >
+          {'↻'}
+        </button>
+      )}
     </div>
   );
 }
