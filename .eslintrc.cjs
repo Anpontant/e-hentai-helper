@@ -23,6 +23,24 @@ module.exports = {
       parserOptions: {
         sourceType: 'module'
       }
+    },
+    {
+      // UMD module shared by the content script and Node tests.
+      files: ['addon/content/viewer-utils.js'],
+      env: {
+        browser: true,
+        node: true
+      }
+    },
+    {
+      files: ['test/**/*.mjs'],
+      env: {
+        browser: false,
+        node: true
+      },
+      parserOptions: {
+        sourceType: 'module'
+      }
     }
   ]
 };

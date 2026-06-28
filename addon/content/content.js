@@ -1,6 +1,14 @@
 (function () {
   'use strict';
 
+  var utils = (typeof self !== 'undefined' ? self : window).EHHelperUtils;
+  var normalizeUrl = utils.normalizeUrl;
+  var isViewerUrl = utils.isViewerUrl;
+  var getViewerPageFromUrl = utils.getViewerPageFromUrl;
+  var parsePagePair = utils.parsePagePair;
+  var getUrlTail = utils.getUrlTail;
+  var formatDuration = utils.formatDuration;
+
   var LOG = true;
   var SCROLL_OFFSET = 0;
   var PRELOAD_DELAY_MS = 500;
@@ -11,8 +19,6 @@
     showStatus: true,
     autoScroll: true
   };
-  var PRELOAD_OPTIONS = [0, 1, 2, 3];
-  var FIT_OPTIONS = ['height', 'width', 'original'];
 
   var settings = Object.assign({}, DEFAULT_SETTINGS);
   var lastHandledKey = '';
@@ -36,13 +42,7 @@
 
   function loadSettings() {
     return browser.storage.local.get(DEFAULT_SETTINGS).then(function (stored) {
-      settings = Object.assign({}, DEFAULT_SETTINGS, stored || {});
-      if (PRELOAD_OPTIONS.indexOf(settings.preloadAheadCount) === -1) {
-        settings.preloadAheadCount = DEFAULT_SETTINGS.preloadAheadCount;
-      }
-      if (FIT_OPTIONS.indexOf(settings.fitMode) === -1) {
-        settings.fitMode = DEFAULT_SETTINGS.fitMode;
-      }
+      settings = utils.normalizeSettings(stored, DEFAULT_SETTINGS);
       updateFitStyle();
       applyImageFit();
       updateStatusVisibility();
@@ -179,38 +179,6 @@
     img.style.setProperty('object-fit', 'fill', 'important');
   }
 
-  function isViewerUrl(url) {
-    return typeof url === 'string' && /\/s\//.test(url);
-  }
-
-  function normalizeUrl(url) {
-    return String(url || '').split('#')[0];
-  }
-
-  function getViewerPageFromUrl(url) {
-    var match = normalizeUrl(url).match(/\/s\/[^/]+\/[^/]+-(\d+)/);
-    return match ? match[1] : '';
-  }
-
-  function parsePagePair(text) {
-    var normalized = String(text || '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (/\.(?:jpg|jpeg|png|gif|webp)\b/i.test(normalized)) return null;
-
-    var match = normalized.match(/^(?:[^\d]*)?(\d{1,5})\s*\/\s*(\d{1,5})(?:[^\d]*)?$/);
-    if (!match) return null;
-
-    var current = parseInt(match[1], 10);
-    var total = parseInt(match[2], 10);
-    if (!current || !total || current > total) return null;
-
-    return {
-      current: String(current),
-      total: String(total)
-    };
-  }
-
   function getPageTextMatch() {
     if (!document.body) return null;
 
@@ -253,11 +221,6 @@
       current = pageText ? pageText.current : '?';
     }
     return 'Page ' + current + '/' + total;
-  }
-
-  function getUrlTail(url) {
-    var parts = normalizeUrl(url).split('/');
-    return parts.length ? parts[parts.length - 1] : '?';
   }
 
   function getCurrentKey() {
@@ -353,11 +316,6 @@
       preloadAbortController = null;
     }
     preloadRunId += 1;
-  }
-
-  function formatDuration(ms) {
-    if (ms < 1000) return ms + 'ms';
-    return (ms / 1000).toFixed(1) + 's';
   }
 
   function updatePreloadStatus() {
