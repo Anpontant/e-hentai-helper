@@ -1,0 +1,24 @@
+# Normalize line endings: store as LF in the repo, check out as LF on all
+# platforms. This keeps Prettier (endOfLine: lf) and .editorconfig consistent
+# regardless of core.autocrlf, so `npm run check` behaves the same on Windows,
+# Linux, and CI.
+* text=auto eol=lf
+
+# Explicit text types (defensive; covered by text=auto above).
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+*.svg  text eol=lf
+*.yml  text eol=lf
+*.sh   text eol=lf
+
+# Binary assets: never normalize.
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.xpi  binary
+*.zip  binary

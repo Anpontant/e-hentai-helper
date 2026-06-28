@@ -6,10 +6,11 @@
     "addon:dev": "dotenv -e .env -e .env.defaults -- npx web-ext run --source-dir addon --firefox-profile ./.web-ext-profile --profile-create-if-missing --keep-profile-changes",
     "addon:lint": "npx web-ext lint --source-dir addon --self-hosted",
     "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",
-    "check": "npm run lint && npm run format:check && npm run addon:lint && npm run addon:build",
+    "check": "npm run lint && npm run format:check && npm run test && npm run addon:lint && npm run addon:build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint addon/**/*.js scripts/**/*.mjs",
+    "lint": "eslint addon/**/*.js scripts/**/*.mjs test/**/*.mjs",
+    "test": "node --test",
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
     "version:major": "node scripts/bump-version.mjs major"

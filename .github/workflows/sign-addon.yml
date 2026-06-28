@@ -60,7 +60,7 @@ jobs:
           fi
           XPI_NAME=$(basename "$XPI")
           TAG="${{ steps.version.outputs.tag }}"
-          UPDATE_LINK="https://github.com/Anpontant/e-hentai-helper/releases/download/$TAG/$XPI_NAME"
+          UPDATE_LINK="${{ github.server_url }}/${{ github.repository }}/releases/download/$TAG/$XPI_NAME"
           cat > dist/updates.json <<EOF
           {
             "addons": {

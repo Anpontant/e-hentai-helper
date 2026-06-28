@@ -2,5 +2,7 @@ dist/
 node_modules/
 npm-debug.log*
 .env
+.envrc
+.direnv/
 .web-ext-profile/
 web-ext-artifacts/
