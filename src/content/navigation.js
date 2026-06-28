@@ -65,6 +65,19 @@ export function getCurrentKey() {
   return normalizeUrl(location.href) + '|' + (img ? img.src : '');
 }
 
+function findLinkById(doc, docUrl, id) {
+  var el = doc.getElementById(id);
+  var href = el && el.href ? el.href : '';
+  if (!href) {
+    var container = doc.querySelector('#' + id + ' a');
+    if (container && container.href) href = container.href;
+  }
+  if (href && isViewerUrl(href) && normalizeUrl(href) !== normalizeUrl(docUrl)) {
+    return href;
+  }
+  return '';
+}
+
 export function getNextPageUrlFromDocument(doc, docUrl) {
   var img = doc.getElementById('img');
   var fromImageLink =
@@ -74,17 +87,8 @@ export function getNextPageUrlFromDocument(doc, docUrl) {
     return fromImageLink;
   }
 
-  var nextById = '';
-  var directNext = doc.getElementById('next');
-  if (directNext && directNext.href) nextById = directNext.href;
-  if (!nextById) {
-    var nextContainer = doc.querySelector('#next a');
-    if (nextContainer && nextContainer.href) nextById = nextContainer.href;
-  }
-
-  if (isViewerUrl(nextById) && normalizeUrl(nextById) !== normalizeUrl(docUrl)) {
-    return nextById;
-  }
+  var nextById = findLinkById(doc, docUrl, 'next');
+  if (nextById) return nextById;
 
   var links = doc.querySelectorAll('a[href*="/s/"]');
   var current = normalizeUrl(docUrl);
@@ -102,19 +106,7 @@ export function getNextPageUrl() {
 }
 
 export function getPrevPageUrlFromDocument(doc, docUrl) {
-  var prevById = '';
-  var directPrev = doc.getElementById('prev');
-  if (directPrev && directPrev.href) prevById = directPrev.href;
-  if (!prevById) {
-    var prevContainer = doc.querySelector('#prev a');
-    if (prevContainer && prevContainer.href) prevById = prevContainer.href;
-  }
-
-  if (isViewerUrl(prevById) && normalizeUrl(prevById) !== normalizeUrl(docUrl)) {
-    return prevById;
-  }
-
-  return '';
+  return findLinkById(doc, docUrl, 'prev');
 }
 
 export function getPrevPageUrl() {
