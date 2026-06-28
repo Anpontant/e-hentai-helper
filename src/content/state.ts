@@ -13,3 +13,5 @@ export const spreadState = signal<SpreadState>({
   rightFallbackSrc: '',
   single: false
 });
+export const virtualPage = signal(0);
+export const totalPages = signal(0);

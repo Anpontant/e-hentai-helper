@@ -1,17 +1,18 @@
-import { settings, spreadState } from './state.js';
-import { getViewerPageFromUrl, getSpreadPageInfo } from '../shared/viewer-utils.js';
+import { settings, spreadState, virtualPage, totalPages } from './state.js';
+import {
+  getViewerPageFromUrl,
+  getSpreadPageInfo,
+  resolveSpreadPage
+} from '../shared/viewer-utils.js';
 import {
   getMainImage,
   getNextPageUrl,
   getNextPageUrlFromDocument,
-  getPrevPageUrl,
-  getPrevPageUrlFromDocument,
   getGalleryBaseUrl,
   fetchGalleryPageUrls,
   getImageUrlFromDocument,
   getTotalPageLabel,
   fetchViewerDocument,
-  viewerDocCache,
   pageUrlMap,
   pageImageMap,
   persistPageMaps,
@@ -20,6 +21,7 @@ import {
 import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
+import { schedulePreloadAfterCurrentImage } from './preloader.js';
 
 let spreadRenderRunId = 0;
 let lastSpreadActive = false;
@@ -137,110 +139,133 @@ export function renderSpread(skipSnap?: boolean) {
       single: true
     };
   }
+
+  virtualPage.value = currentPage;
+  totalPages.value = total;
 }
 
-function navigateViaGalleryMap(targetPage: number, fallback: () => void) {
+function resolvePageImage(page: number): Promise<string> {
+  const cached = pageImageMap[page];
+  if (cached) return Promise.resolve(cached);
+
+  const url = pageUrlMap[page];
+  if (url) {
+    return fetchViewerDocument(url)
+      .then(function (doc) {
+        const imageUrl = getImageUrlFromDocument(doc, url);
+        if (imageUrl) pageImageMap[page] = imageUrl;
+        const nextUrl = getNextPageUrlFromDocument(doc, url);
+        if (nextUrl) {
+          const nextPage = parseInt(getViewerPageFromUrl(nextUrl), 10);
+          if (nextPage) pageUrlMap[nextPage] = nextUrl;
+        }
+        persistPageMaps();
+        return imageUrl;
+      })
+      .catch(function () {
+        return '';
+      });
+  }
+
   const galleryUrl = getGalleryBaseUrl();
-  if (!galleryUrl) {
-    fallback();
-    return;
-  }
-  fetchGalleryPageUrls(galleryUrl, targetPage)
-    .then(function () {
-      const url = pageUrlMap[targetPage];
-      if (url) {
-        location.href = url;
-      } else {
-        fallback();
-      }
-    })
-    .catch(function () {
-      fallback();
-    });
+  if (!galleryUrl) return Promise.resolve('');
+
+  return fetchGalleryPageUrls(galleryUrl, page).then(function () {
+    const resolved = pageUrlMap[page];
+    if (!resolved) return '';
+    return resolvePageImage(page);
+  });
 }
 
-function fetchAndNavigate(
-  adjacentUrl: string,
-  getUrlFromDoc: (doc: Document, url: string) => string
-) {
-  const cached = viewerDocCache.get(adjacentUrl);
-  if (cached) {
-    const target = getUrlFromDoc(cached, adjacentUrl);
-    location.href = target || adjacentUrl;
-    return;
+function renderSpreadAtPage(targetPage: number, updateVirtualPage?: boolean) {
+  const s = settings.value;
+  const total = totalPages.value;
+
+  const resolved = s.spreadView
+    ? resolveSpreadPage(targetPage, total, s.spreadCoverAlone)
+    : {
+        rightPage: targetPage,
+        info: { partnerPage: null, pagesInSpread: 1, isRightPage: true as const }
+      };
+  const rightPage = resolved.rightPage;
+  const info = resolved.info;
+
+  if (updateVirtualPage !== false) {
+    virtualPage.value = rightPage;
+  }
+  spreadRenderRunId += 1;
+  const runId = spreadRenderRunId;
+
+  const cachedRight = pageImageMap[rightPage] || '';
+  const cachedLeft = info.partnerPage ? pageImageMap[info.partnerPage] || '' : '';
+
+  spreadState.value = {
+    active: true,
+    leftSrc: cachedLeft,
+    rightSrc: cachedRight,
+    rightFallbackSrc: '',
+    single: !info.partnerPage
+  };
+
+  if (!cachedRight) {
+    resolvePageImage(rightPage).then(function (src) {
+      if (runId !== spreadRenderRunId) return;
+      if (src) {
+        spreadState.value = { ...spreadState.value, rightSrc: src };
+      }
+    });
   }
 
-  fetchViewerDocument(adjacentUrl)
-    .then(function (doc) {
-      const target = getUrlFromDoc(doc, adjacentUrl);
-      location.href = target || adjacentUrl;
-    })
-    .catch(function () {
-      location.href = adjacentUrl;
+  if (info.partnerPage && !cachedLeft) {
+    const partner = info.partnerPage;
+    resolvePageImage(partner).then(function (src) {
+      if (runId !== spreadRenderRunId) return;
+      if (src) {
+        spreadState.value = { ...spreadState.value, leftSrc: src };
+      }
     });
+  }
+
+  persistPageMaps();
+  schedulePreloadAfterCurrentImage();
 }
 
 export function advanceSpread() {
   const s = settings.value;
-  const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-  const totalStr = getTotalPageLabel();
-  const total = parseInt(totalStr, 10) || 0;
+  const currentPage = virtualPage.value || parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const total = totalPages.value;
   const info = s.spreadView
     ? getSpreadPageInfo(currentPage, total, s.spreadCoverAlone)
     : { partnerPage: null, pagesInSpread: 1, isRightPage: true };
   const targetPage = currentPage + info.pagesInSpread;
 
-  const mapped = pageUrlMap[targetPage];
-  if (mapped) {
-    location.href = mapped;
-    return;
-  }
+  if (total > 0 && targetPage > total) return;
 
-  navigateViaGalleryMap(targetPage, function () {
-    if (info.pagesInSpread === 1) {
-      const nextUrl = getNextPageUrl();
-      if (nextUrl) location.href = nextUrl;
-      return;
-    }
-
-    const partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
-    if (!partnerUrl) return;
-
-    fetchAndNavigate(partnerUrl, getNextPageUrlFromDocument);
-  });
+  renderSpreadAtPage(targetPage);
 }
 
 export function retreatSpread() {
-  const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const currentPage = virtualPage.value || parseInt(getViewerPageFromUrl(location.href), 10) || 0;
   const targetPage = Math.max(1, currentPage - 2);
   if (targetPage >= currentPage) return;
 
-  const mapped = pageUrlMap[targetPage];
-  if (mapped) {
-    location.href = mapped;
-    return;
-  }
-
-  navigateViaGalleryMap(targetPage, function () {
-    const prevUrl = getPrevPageUrl();
-    if (!prevUrl) return;
-
-    if (currentPage - targetPage === 1) {
-      location.href = prevUrl;
-      return;
-    }
-
-    fetchAndNavigate(prevUrl, getPrevPageUrlFromDocument);
-  });
+  renderSpreadAtPage(targetPage);
 }
 
 export function exitOverlay() {
+  const galleryUrl = getGalleryBaseUrl();
+
   settings.value = { ...settings.value, overlayView: false, spreadView: false };
   browser.storage.local.set({ overlayView: false, spreadView: false });
   removeSpreadOverlayState();
   clearPageMapsStorage();
-  applyImageFit();
-  scrollToImage();
+
+  if (galleryUrl) {
+    location.href = galleryUrl;
+  } else {
+    applyImageFit();
+    scrollToImage();
+  }
 }
 
 function removeSpreadOverlayState() {
@@ -252,6 +277,9 @@ function removeSpreadOverlayState() {
     rightFallbackSrc: '',
     single: false
   };
+
+  virtualPage.value = 0;
+  totalPages.value = 0;
 
   Object.keys(pageUrlMap).forEach(function (k) {
     delete pageUrlMap[k];
@@ -265,11 +293,27 @@ function removeSpreadOverlayState() {
 export function updateSpreadVisibility() {
   const s = settings.value;
   if (s.overlayView || s.spreadView) {
-    const skipSnap = lastSpreadActive && s.spreadView;
-    renderSpread(skipSnap);
+    if (virtualPage.value > 0) {
+      renderSpreadAtPage(virtualPage.value, false);
+    } else {
+      const skipSnap = lastSpreadActive && s.spreadView;
+      renderSpread(skipSnap);
+    }
     lastSpreadActive = s.spreadView;
   } else {
+    const actualPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+    const vp = virtualPage.value;
+    const targetUrl = vp && vp !== actualPage ? pageUrlMap[vp] : '';
+
     removeSpreadOverlayState();
+    clearPageMapsStorage();
     lastSpreadActive = false;
+
+    if (targetUrl) {
+      location.href = targetUrl;
+    } else {
+      applyImageFit();
+      scrollToImage();
+    }
   }
 }

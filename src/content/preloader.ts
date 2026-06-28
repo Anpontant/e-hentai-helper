@@ -1,4 +1,4 @@
-import { settings, preloadThumbs } from './state.js';
+import { settings, preloadThumbs, virtualPage, totalPages } from './state.js';
 import { PRELOAD_DELAY_MS, LOG, IMAGE_PRELOAD_TIMEOUT_MS } from '../shared/constants.js';
 import {
   normalizeUrl,
@@ -264,6 +264,20 @@ export function preloadNext() {
   preloadAbortController = new AbortController();
   removeOldPreloadFrames();
   preloadState = {};
+
+  if (isOverlayActive() && virtualPage.value > 0) {
+    const currentPage = virtualPage.value;
+    const total = totalPages.value;
+    const info = settings.value.spreadView
+      ? getSpreadPageInfo(currentPage, total, settings.value.spreadCoverAlone)
+      : { pagesInSpread: 1 };
+    const afterSpreadPage = currentPage + info.pagesInSpread;
+    const afterSpreadUrl = pageUrlMap[afterSpreadPage];
+    if (afterSpreadUrl) {
+      preloadAheadFrom(afterSpreadUrl, 1);
+    }
+    return;
+  }
 
   const nextUrl = getNextPageUrl();
   if (!nextUrl) {

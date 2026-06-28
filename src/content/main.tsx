@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { settings, menuOpen } from './state.js';
+import { settings, menuOpen, virtualPage } from './state.js';
 import { loadSettings } from './settings.js';
 import { updateFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
@@ -23,6 +23,8 @@ let observer: MutationObserver | null = null;
 let observerTargetSignature = '';
 
 function handlePageStateChange() {
+  if (virtualPage.value > 0 && isOverlayActive()) return;
+
   clearTimeout(changeTimer);
   changeTimer = window.setTimeout(function () {
     const key = getCurrentKey();

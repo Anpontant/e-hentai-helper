@@ -80,6 +80,17 @@ export function getSpreadPageInfo(
   return { partnerPage: partner, pagesInSpread: 2, isRightPage: true };
 }
 
+export function resolveSpreadPage(
+  page: number,
+  total: number,
+  coverAlone: boolean
+): { rightPage: number; info: SpreadPageInfo } {
+  const info = getSpreadPageInfo(page, total, coverAlone);
+  if (info.isRightPage) return { rightPage: page, info: info };
+  const rightPage = Math.max(1, page - 1);
+  return { rightPage: rightPage, info: getSpreadPageInfo(rightPage, total, coverAlone) };
+}
+
 export function normalizeSettings(stored: Partial<Settings>, defaults: Settings): Settings {
   const settings = Object.assign({}, defaults, stored || {});
   if (PRELOAD_OPTIONS.indexOf(settings.preloadAheadCount) === -1) {

@@ -7,6 +7,7 @@ import {
   getUrlTail
 } from '../shared/viewer-utils.js';
 import { MAX_VIEWER_DOC_CACHE, GALLERY_ITEMS_PER_PAGE } from '../shared/constants.js';
+import { virtualPage, totalPages } from './state.js';
 
 export const viewerDocCache = new Map<string, Document>();
 export const pageUrlMap: Record<string, string> = {};
@@ -51,16 +52,28 @@ export function getTotalPageLabel() {
 }
 
 export function getProgressLabel() {
-  let current = getViewerPageFromUrl(location.href);
-  const total = getTotalPageLabel();
-  if (!current) {
-    const pageText = getPageTextMatch();
-    current = pageText ? pageText.current : '?';
+  let current: string;
+  let total: string;
+
+  if (virtualPage.value > 0) {
+    current = String(virtualPage.value);
+    total = totalPages.value > 0 ? String(totalPages.value) : getTotalPageLabel();
+  } else {
+    current = getViewerPageFromUrl(location.href);
+    total = getTotalPageLabel();
+    if (!current) {
+      const pageText = getPageTextMatch();
+      current = pageText ? pageText.current : '?';
+    }
   }
+
   return 'Page ' + current + '/' + total;
 }
 
 export function getCurrentKey() {
+  if (virtualPage.value > 0) {
+    return 'virtual-' + virtualPage.value + '|' + (pageImageMap[virtualPage.value] || '');
+  }
   const img = getMainImage();
   return normalizeUrl(location.href) + '|' + (img ? img.src : '');
 }
