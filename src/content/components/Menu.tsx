@@ -2,49 +2,11 @@ import { useEffect } from 'preact/hooks';
 import { menuOpen, settings } from '../state.js';
 import { saveSetting } from '../settings.js';
 import { scrollToImage } from '../scroll.js';
+import { Segmented } from '../../shared/components/Segmented.jsx';
+import { Checkbox } from '../../shared/components/Checkbox.jsx';
 
-function msg(key) {
+function msg(key: string) {
   return browser.i18n.getMessage(key) || key;
-}
-
-function Segmented({ setting, options }) {
-  var current = settings.value[setting];
-  return (
-    <div class="eh-menu-seg" data-setting={setting}>
-      {options.map(function (opt) {
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            class={String(current) === String(opt.value) ? 'active' : ''}
-            onClick={function () {
-              var val = setting === 'preloadAheadCount' ? parseInt(opt.value, 10) : opt.value;
-              saveSetting({ [setting]: val });
-            }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Checkbox({ id, setting, label }) {
-  var checked = settings.value[setting];
-  return (
-    <label>
-      <input
-        type="checkbox"
-        id={id}
-        checked={checked}
-        onChange={function (e) {
-          saveSetting({ [setting]: e.target.checked });
-        }}
-      />
-      <span>{label}</span>
-    </label>
-  );
 }
 
 function MenuPanel() {
@@ -54,6 +16,9 @@ function MenuPanel() {
         <div class="eh-menu-label">{msg('popupPreload')}</div>
         <Segmented
           setting="preloadAheadCount"
+          current={settings.value.preloadAheadCount}
+          onSave={saveSetting}
+          className="eh-menu-seg"
           options={[
             { value: '0', label: msg('popupOff') },
             { value: '1', label: '+1' },
@@ -61,39 +26,71 @@ function MenuPanel() {
             { value: '3', label: '+3' }
           ]}
         />
+        <div class="eh-menu-group-checks">
+          <Checkbox
+            id="eh-menu-showStatus"
+            setting="showStatus"
+            checked={settings.value.showStatus}
+            onSave={saveSetting}
+            label={msg('popupStatus')}
+          />
+          <Checkbox
+            id="eh-menu-showPreloadThumbs"
+            setting="showPreloadThumbs"
+            checked={settings.value.showPreloadThumbs}
+            onSave={saveSetting}
+            label={msg('popupPreloadThumbs')}
+          />
+        </div>
       </div>
 
       <div class="eh-menu-section">
         <div class="eh-menu-label">{msg('popupFit')}</div>
         <Segmented
           setting="fitMode"
+          current={settings.value.fitMode}
+          onSave={saveSetting}
+          className="eh-menu-seg"
           options={[
             { value: 'height', label: msg('popupHeight') },
             { value: 'width', label: msg('popupWidth') },
             { value: 'original', label: '1:1' }
           ]}
         />
+        <Checkbox
+          id="eh-menu-autoScroll"
+          setting="autoScroll"
+          checked={settings.value.autoScroll}
+          onSave={saveSetting}
+          label={msg('popupAutoScroll')}
+        />
       </div>
 
       <div class="eh-menu-section">
         <div class="eh-menu-label">{msg('popupOverlay')}</div>
-        <Checkbox id="eh-menu-overlayView" setting="overlayView" label={msg('popupOverlayView')} />
-        <Checkbox id="eh-menu-spreadView" setting="spreadView" label={msg('popupSpreadView')} />
         <Checkbox
-          id="eh-menu-spreadCoverAlone"
-          setting="spreadCoverAlone"
-          label={msg('popupSpreadCoverAlone')}
+          id="eh-menu-overlayView"
+          setting="overlayView"
+          checked={settings.value.overlayView}
+          onSave={saveSetting}
+          label={msg('popupOverlayView')}
         />
-      </div>
-
-      <div class="eh-menu-checks">
-        <Checkbox id="eh-menu-autoScroll" setting="autoScroll" label={msg('popupAutoScroll')} />
-        <Checkbox id="eh-menu-showStatus" setting="showStatus" label={msg('popupStatus')} />
-        <Checkbox
-          id="eh-menu-showPreloadThumbs"
-          setting="showPreloadThumbs"
-          label={msg('popupPreloadThumbs')}
-        />
+        <div class="eh-menu-group-checks">
+          <Checkbox
+            id="eh-menu-spreadView"
+            setting="spreadView"
+            checked={settings.value.spreadView}
+            onSave={saveSetting}
+            label={msg('popupSpreadView')}
+          />
+          <Checkbox
+            id="eh-menu-spreadCoverAlone"
+            setting="spreadCoverAlone"
+            checked={settings.value.spreadCoverAlone}
+            onSave={saveSetting}
+            label={msg('popupSpreadCoverAlone')}
+          />
+        </div>
       </div>
 
       <div class="eh-menu-actions">
@@ -123,16 +120,16 @@ function MenuPanel() {
 }
 
 export function Menu() {
-  var open = menuOpen.value;
+  const open = menuOpen.value;
 
   useEffect(
     function () {
       if (!open) return;
-      function handleClick(e) {
-        var btn = document.getElementById('eh-helper-menu-btn');
-        var panel = document.getElementById('eh-helper-menu-panel');
-        if (btn && btn.contains(e.target)) return;
-        if (panel && panel.contains(e.target)) return;
+      function handleClick(e: MouseEvent) {
+        const btn = document.getElementById('eh-helper-menu-btn');
+        const panel = document.getElementById('eh-helper-menu-panel');
+        if (btn && btn.contains(e.target as Node)) return;
+        if (panel && panel.contains(e.target as Node)) return;
         menuOpen.value = false;
       }
       document.addEventListener('click', handleClick, true);

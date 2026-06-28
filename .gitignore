@@ -11,3 +11,6 @@ npm-debug.log*
 # Built output (source lives in src/)
 addon/content/content.js
 addon/popup/popup.js
+
+# SDD scratch (progress ledger, briefs, diffs)
+.superpowers/

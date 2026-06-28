@@ -10,3 +10,4 @@ package-lock.json
 *.zip
 tools/investigate-preload-oneline.js
 tools/investigate-performance-oneline.js
+.superpowers/

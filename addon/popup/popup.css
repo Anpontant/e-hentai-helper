@@ -61,8 +61,7 @@ button.active {
   flex: 1;
 }
 
-.checks,
-.spread-checks {
+.group-checks {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;

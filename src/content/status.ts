@@ -2,18 +2,18 @@ import { settings, statusLines } from './state.js';
 import { getProgressLabel } from './navigation.js';
 
 export function isOverlayActive() {
-  var s = settings.value;
+  const s = settings.value;
   return s.overlayView || s.spreadView;
 }
 
-export function showStatus(text) {
+export function showStatus(text: string) {
   if (!settings.value.showStatus) return;
   showStatusLines([text]);
 }
 
-export function showStatusLines(lines) {
+export function showStatusLines(lines: string[]) {
   if (!settings.value.showStatus) return;
-  var allLines = (lines || []).concat([getProgressLabel()]);
+  const allLines = (lines || []).concat([getProgressLabel()]);
   statusLines.value = allLines;
 }
 

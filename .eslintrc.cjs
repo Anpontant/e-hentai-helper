@@ -27,6 +27,22 @@ module.exports = {
   },
   overrides: [
     {
+      files: ['**/*.ts', '**/*.tsx'],
+      parser: '@typescript-eslint/parser',
+      extends: ['plugin:@typescript-eslint/recommended'],
+      plugins: ['@typescript-eslint'],
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true
+        }
+      },
+      rules: {
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+      }
+    },
+    {
       files: ['scripts/**/*.mjs'],
       env: {
         browser: false,
@@ -34,7 +50,7 @@ module.exports = {
       }
     },
     {
-      files: ['test/**/*.mjs'],
+      files: ['test/**/*.mjs', 'test/**/*.ts'],
       env: {
         browser: false,
         node: true
