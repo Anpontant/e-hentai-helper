@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 
 const root = process.cwd();
 const release = process.argv[2] || 'patch';
@@ -63,7 +63,8 @@ if (fs.existsSync(files[2])) {
   writeJson(files[2], lock);
 }
 
-execFileSync('npx', ['prettier', '--write', files[0], files[1]], {
+const targets = [files[0], files[1]].map((f) => `"${f}"`).join(' ');
+execSync(`npx prettier --write ${targets}`, {
   cwd: root,
   stdio: 'inherit'
 });
