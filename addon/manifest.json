@@ -11,8 +11,8 @@
     "48": "icons/icon.svg",
     "96": "icons/icon.svg"
   },
-  "permissions": ["storage", "activeTab", "tabs"],
-  "host_permissions": ["https://e-hentai.org/s/*", "https://exhentai.org/s/*"],
+  "permissions": ["storage", "activeTab", "tabs", "cookies", "webRequest", "webRequestBlocking"],
+  "host_permissions": ["https://e-hentai.org/s/*", "https://exhentai.org/*"],
   "content_scripts": [
     {
       "matches": ["https://e-hentai.org/s/*", "https://exhentai.org/s/*"],
@@ -21,6 +21,10 @@
       "run_at": "document_start"
     }
   ],
+  "background": {
+    "scripts": ["background/background.js"],
+    "type": "module"
+  },
   "action": {
     "default_title": "__MSG_extensionName__",
     "default_popup": "popup/popup.html",

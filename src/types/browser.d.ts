@@ -6,6 +6,15 @@ declare namespace browser {
       set(patch: any): Promise<void>;
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */
+    interface StorageChange {
+      oldValue?: unknown;
+      newValue?: unknown;
+    }
+    const onChanged: {
+      addListener(
+        callback: (changes: Record<string, StorageChange>, areaName?: string) => void
+      ): void;
+    };
   }
 
   namespace tabs {
@@ -30,6 +39,32 @@ declare namespace browser {
 
   namespace i18n {
     function getMessage(key: string, substitutions?: string | string[]): string;
+  }
+
+  namespace cookies {
+    interface Cookie {
+      name: string;
+      value: string;
+    }
+    function get(details: { url: string; name: string }): Promise<Cookie | null>;
+  }
+
+  namespace webRequest {
+    interface RequestDetails {
+      url: string;
+      type: string;
+      requestId: string;
+    }
+    interface BlockingResponse {
+      redirectUrl?: string;
+    }
+    const onBeforeRequest: {
+      addListener(
+        callback: (details: RequestDetails) => BlockingResponse | Promise<BlockingResponse>,
+        filter: { urls: string[]; types?: string[] },
+        extraInfoSpec?: string[]
+      ): void;
+    };
   }
 
   namespace windows {

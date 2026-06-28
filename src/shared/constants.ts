@@ -18,5 +18,6 @@ export const DEFAULT_SETTINGS: Settings = {
   overlayView: false,
   spreadView: false,
   spreadCoverAlone: true,
-  showPreloadThumbs: false
+  showPreloadThumbs: false,
+  exhRedirect: false
 };

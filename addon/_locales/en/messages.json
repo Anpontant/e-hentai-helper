@@ -65,6 +65,9 @@
   "popupVersion": {
     "message": "Version"
   },
+  "popupExhRedirect": {
+    "message": "Redirect ExH → EH"
+  },
   "menuSettingsLabel": {
     "message": "Settings"
   }

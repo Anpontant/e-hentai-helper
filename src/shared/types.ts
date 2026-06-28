@@ -9,6 +9,7 @@ export interface Settings {
   spreadView: boolean;
   spreadCoverAlone: boolean;
   showPreloadThumbs: boolean;
+  exhRedirect: boolean;
 }
 
 export interface SpreadState {
