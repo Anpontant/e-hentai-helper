@@ -34,13 +34,31 @@ Before committing, run the relevant checks. For normal code changes, run:
 npm run check
 ```
 
-Codex hooks for this repository call:
+This runs `lint`, `format:check`, `addon:lint`, and `addon:build`, and it also
+runs in CI (`.github/workflows/ci.yml`) on every pull request and on pushes that
+touch code. It must pass before you commit.
 
-```bash
-scripts/codex-hooks/check-on-stop.sh
+Line endings are normalized to LF via `.gitattributes`. Do not reintroduce CRLF;
+if `format:check` flags files you did not touch, run `npm run format`.
+
+## Branch and review flow
+
+Do not commit directly to `main`. Work on a topic branch and open a pull request
+so CI runs and the change is reviewable. Do not commit unrelated user changes
+unless explicitly asked.
+
+## Codex stop hook
+
+`scripts/codex-hooks/check-on-stop.sh` runs `npm run check` automatically at
+Codex `Stop` when tracked files changed. It identifies this project by the
+`package.json` `name`, so it is safe to register globally and only fires here.
+
+Register it in `~/.codex/config.toml` (path/format depend on your Codex
+version), e.g.:
+
+```toml
+[hooks]
+stop = ["sh", "scripts/codex-hooks/check-on-stop.sh"]
 ```
 
-The hook is intended to run `npm run check` automatically at Codex `Stop` when
-repository files were changed. If it fails, fix the issue before committing.
-
-Do not commit unrelated user changes unless explicitly asked.
+If the hook is not registered, run `npm run check` manually before committing.
