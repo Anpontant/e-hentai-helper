@@ -111,9 +111,9 @@ function MenuPanel() {
           type="button"
           onClick={function () {
             if (document.fullscreenElement) {
-              document.exitFullscreen();
+              document.exitFullscreen().catch(function () {});
             } else {
-              document.documentElement.requestFullscreen();
+              document.documentElement.requestFullscreen().catch(function () {});
             }
           }}
         >
@@ -132,8 +132,12 @@ export function Menu() {
       if (!open) return;
       function handleClick(e: MouseEvent) {
         const btn = document.getElementById('eh-helper-menu-btn');
+        if (btn && btn.contains(e.target as Node)) {
+          e.stopPropagation();
+          menuOpen.value = false;
+          return;
+        }
         const panel = document.getElementById('eh-helper-menu-panel');
-        if (btn && btn.contains(e.target as Node)) return;
         if (panel && panel.contains(e.target as Node)) return;
         menuOpen.value = false;
       }

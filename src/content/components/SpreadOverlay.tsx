@@ -41,9 +41,22 @@ export function SpreadOverlay() {
     if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
     event.preventDefault();
     event.stopPropagation();
+    navigateByX(event.clientX);
+  }
+
+  function handleTouchEnd(event: TouchEvent) {
+    if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    navigateByX(touch.clientX);
+  }
+
+  function navigateByX(clientX: number) {
     const overlay = document.getElementById('eh-helper-spread-overlay');
     const midX = overlay ? overlay.clientWidth / 2 : window.innerWidth / 2;
-    if (event.clientX < midX) {
+    if (clientX < midX) {
       advanceSpread();
     } else {
       retreatSpread();
@@ -87,6 +100,7 @@ export function SpreadOverlay() {
       id="eh-helper-spread-overlay"
       class={state.single ? 'eh-spread-single' : ''}
       onClick={handleClick}
+      onTouchEnd={handleTouchEnd}
       onMouseMove={handleMouseMove}
     >
       <button id="eh-helper-spread-close" onClick={handleClose}>
