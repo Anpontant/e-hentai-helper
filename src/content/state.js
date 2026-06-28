@@ -9,5 +9,6 @@ export const spreadState = signal({
   active: false,
   leftSrc: '',
   rightSrc: '',
+  rightFallbackSrc: '',
   single: false
 });

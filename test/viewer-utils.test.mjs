@@ -169,6 +169,21 @@ test('getSpreadPageInfo with unknown total pairs right pages', () => {
   });
 });
 
+test('getGalleryIdFromUrl extracts the gallery ID', () => {
+  assert.equal(utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7'), '3019721');
+  assert.equal(utils.getGalleryIdFromUrl('https://exhentai.org/s/abc123/999-12'), '999');
+  assert.equal(
+    utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7#x'),
+    '3019721'
+  );
+});
+
+test('getGalleryIdFromUrl returns empty for non-viewer URLs', () => {
+  assert.equal(utils.getGalleryIdFromUrl('https://e-hentai.org/g/3019721/abc/'), '');
+  assert.equal(utils.getGalleryIdFromUrl(''), '');
+  assert.equal(utils.getGalleryIdFromUrl(undefined), '');
+});
+
 test('getSpreadPageInfo handles invalid currentPage', () => {
   const zero = utils.getSpreadPageInfo(0, 40, true);
   assert.equal(zero.partnerPage, null);
