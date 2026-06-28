@@ -4,6 +4,11 @@
 // forces the turn to continue, so it cannot loop.
 import { spawnSync } from 'node:child_process';
 
+// Guard: if this file is ever executed by `node --test` (a test-runner glob
+// match), bail immediately — never read stdin, never spawn another run. The
+// spawned `node --test` below sets this env var, so recursion is impossible.
+if (process.env.E_HENTAI_HELPER_ON_STOP) process.exit(0);
+
 await readStdin(); // drain hook payload; nothing in it is needed here
 
 // Only run when tracked source actually changed (src / test / scripts).
@@ -12,7 +17,10 @@ const status = spawnSync('git', ['status', '--porcelain', '--', 'src', 'test', '
 });
 if (status.error || !status.stdout || status.stdout.trim() === '') process.exit(0);
 
-const run = spawnSync(process.execPath, ['--test'], { encoding: 'utf8' });
+const run = spawnSync(process.execPath, ['--test'], {
+  encoding: 'utf8',
+  env: { ...process.env, E_HENTAI_HELPER_ON_STOP: '1' }
+});
 const out = `${run.stdout ?? ''}${run.stderr ?? ''}`.trim();
 
 if (run.status === 0) {

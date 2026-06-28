@@ -30,7 +30,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": [".claude/hooks/test-on-stop.mjs"],
+            "args": [".claude/hooks/on-stop.mjs"],
             "statusMessage": "テスト実行中...",
             "timeout": 120
           }
