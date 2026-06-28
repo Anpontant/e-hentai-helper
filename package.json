@@ -32,7 +32,6 @@
     "globals": "^17.7.0",
     "happy-dom": "^20.10.6",
     "prettier": "^3.8.5",
-    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9",
     "web-ext": "^10.4.0"
