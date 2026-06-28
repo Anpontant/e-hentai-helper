@@ -6,6 +6,7 @@ import {
   parsePagePair,
   getUrlTail
 } from '../shared/viewer-utils.mjs';
+import { MAX_VIEWER_DOC_CACHE, GALLERY_ITEMS_PER_PAGE } from '../shared/constants.js';
 
 export const viewerDocCache = new Map();
 export const pageUrlMap = {};
@@ -141,7 +142,7 @@ export function getPageLabelFromDocument(doc, fallbackUrl) {
 }
 
 function pruneViewerDocCache() {
-  while (viewerDocCache.size > 12) {
+  while (viewerDocCache.size > MAX_VIEWER_DOC_CACHE) {
     var firstKey = viewerDocCache.keys().next().value;
     viewerDocCache.delete(firstKey);
   }
@@ -212,7 +213,7 @@ export function getGalleryBaseUrl() {
   return link ? link.href : '';
 }
 
-var galleryItemsPerPage = 20;
+var galleryItemsPerPage = GALLERY_ITEMS_PER_PAGE;
 
 export function fetchGalleryPageUrls(galleryBaseUrl, targetPage) {
   var pageIndex = Math.floor((targetPage - 1) / galleryItemsPerPage);

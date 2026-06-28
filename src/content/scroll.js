@@ -1,5 +1,5 @@
 import { settings } from './state.js';
-import { SCROLL_OFFSET } from '../shared/constants.js';
+import { SCROLL_OFFSET, MAX_SCROLL_RETRIES, SCROLL_RETRY_DELAY_MS } from '../shared/constants.js';
 import { getMainImage } from './navigation.js';
 import { applyImageFit } from './fit.js';
 import { isOverlayActive, showStatus } from './status.js';
@@ -9,10 +9,10 @@ export function scrollToImage(retryCount) {
   retryCount = retryCount || 0;
   var img = getMainImage();
   if (!img) {
-    if (retryCount < 20) {
+    if (retryCount < MAX_SCROLL_RETRIES) {
       window.setTimeout(function () {
         scrollToImage(retryCount + 1);
-      }, 100);
+      }, SCROLL_RETRY_DELAY_MS);
       return;
     }
     showStatus('EH: image not found');

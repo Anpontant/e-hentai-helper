@@ -1,6 +1,5 @@
 import { settings, preloadThumbs } from './state.js';
-import { PRELOAD_DELAY_MS } from '../shared/constants.js';
-import { LOG } from '../shared/constants.js';
+import { PRELOAD_DELAY_MS, LOG, IMAGE_PRELOAD_TIMEOUT_MS } from '../shared/constants.js';
 import {
   normalizeUrl,
   getViewerPageFromUrl,
@@ -100,7 +99,7 @@ function preloadImage(imageUrl) {
     var image = new Image();
     var timeout = window.setTimeout(function () {
       reject(new Error('image preload timeout'));
-    }, 5000);
+    }, IMAGE_PRELOAD_TIMEOUT_MS);
 
     image.onload = function () {
       window.clearTimeout(timeout);

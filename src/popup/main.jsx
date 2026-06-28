@@ -1,16 +1,6 @@
 import { render } from 'preact';
 import { signal } from '@preact/signals';
-
-var DEFAULT_SETTINGS = {
-  preloadAheadCount: 2,
-  fitMode: 'height',
-  showStatus: true,
-  autoScroll: true,
-  overlayView: false,
-  spreadView: false,
-  spreadCoverAlone: true,
-  showPreloadThumbs: false
-};
+import { DEFAULT_SETTINGS } from '../shared/constants.js';
 
 var settings = signal({ ...DEFAULT_SETTINGS });
 var message = signal('');
