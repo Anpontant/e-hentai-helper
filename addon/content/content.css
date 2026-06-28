@@ -55,6 +55,7 @@
 }
 
 #eh-helper-spread-overlay {
+  pointer-events: auto;
   position: fixed;
   inset: 0;
   display: flex;
@@ -107,6 +108,7 @@
 }
 
 #eh-helper-menu-btn {
+  pointer-events: auto;
   position: fixed;
   top: 8px;
   right: 8px;
@@ -133,6 +135,7 @@
 }
 
 #eh-helper-menu-panel {
+  pointer-events: auto;
   position: fixed;
   top: 52px;
   right: 8px;

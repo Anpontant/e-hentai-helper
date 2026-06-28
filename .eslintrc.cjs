@@ -5,30 +5,31 @@ module.exports = {
     es2022: true,
     webextensions: true
   },
-  extends: ['eslint:recommended'],
+  extends: ['eslint:recommended', 'plugin:react/recommended', 'plugin:react/jsx-runtime'],
+  plugins: ['react'],
+  settings: {
+    react: {
+      pragma: 'h',
+      version: '18.0'
+    }
+  },
   parserOptions: {
     ecmaVersion: 2022,
-    sourceType: 'script'
+    sourceType: 'module',
+    ecmaFeatures: {
+      jsx: true
+    }
   },
   rules: {
-    'no-console': 'off'
+    'no-console': 'off',
+    'react/prop-types': 'off',
+    'react/no-unknown-property': ['error', { ignore: ['class'] }]
   },
   overrides: [
     {
       files: ['scripts/**/*.mjs'],
       env: {
         browser: false,
-        node: true
-      },
-      parserOptions: {
-        sourceType: 'module'
-      }
-    },
-    {
-      // UMD module shared by the content script and Node tests.
-      files: ['addon/content/viewer-utils.js'],
-      env: {
-        browser: true,
         node: true
       }
     },
@@ -37,9 +38,6 @@ module.exports = {
       env: {
         browser: false,
         node: true
-      },
-      parserOptions: {
-        sourceType: 'module'
       }
     }
   ]
