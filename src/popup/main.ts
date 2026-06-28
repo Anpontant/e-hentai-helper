@@ -24,9 +24,16 @@ function showHint(key: string) {
   document.getElementById('hint')!.textContent = browser.i18n.getMessage(key) || key;
 }
 
+function getViewMode(): string {
+  if (settings.spreadView) return 'spread';
+  if (settings.overlayView) return 'single';
+  return 'off';
+}
+
 function updateUI() {
   document.querySelectorAll<HTMLElement>('.segmented').forEach(function (seg) {
-    const current = String(settings[seg.dataset.setting as keyof Settings]);
+    const key = seg.dataset.setting!;
+    const current = key === 'viewMode' ? getViewMode() : String(settings[key as keyof Settings]);
     seg.querySelectorAll<HTMLButtonElement>('button').forEach(function (btn) {
       btn.className = btn.dataset.value === current ? 'active' : '';
     });
@@ -37,6 +44,11 @@ function updateUI() {
       input.checked = settings[input.id as keyof Settings] as boolean;
     }
   });
+
+  const coverLabel = document.getElementById('coverAloneLabel');
+  if (coverLabel) {
+    coverLabel.style.display = settings.spreadView ? '' : 'none';
+  }
 }
 
 function savePatch(patch: Partial<Settings>) {
@@ -66,6 +78,17 @@ function init() {
     btn.addEventListener('click', function () {
       const seg = btn.closest('.segmented') as HTMLElement;
       const key = seg.dataset.setting!;
+      if (key === 'viewMode') {
+        const mode = btn.dataset.value!;
+        if (mode === 'off') {
+          savePatch({ overlayView: false, spreadView: false });
+        } else if (mode === 'single') {
+          savePatch({ overlayView: true, spreadView: false });
+        } else if (mode === 'spread') {
+          savePatch({ overlayView: true, spreadView: true });
+        }
+        return;
+      }
       const val =
         key === 'preloadAheadCount' ? parseInt(btn.dataset.value!, 10) : btn.dataset.value!;
       savePatch({ [key]: val } as Partial<Settings>);

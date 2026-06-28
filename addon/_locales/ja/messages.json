@@ -47,14 +47,14 @@
   "popupFullscreenToggled": {
     "message": "全画面を切り替えました"
   },
-  "popupOverlay": {
-    "message": "オーバーレイ"
+  "popupViewMode": {
+    "message": "表示モード"
   },
-  "popupOverlayView": {
-    "message": "オーバーレイ表示"
+  "popupViewSingle": {
+    "message": "単ページ"
   },
-  "popupSpreadView": {
-    "message": "見開き表示"
+  "popupViewSpread": {
+    "message": "見開き"
   },
   "popupSpreadCoverAlone": {
     "message": "表紙単独"

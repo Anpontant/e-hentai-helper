@@ -67,22 +67,30 @@ function MenuPanel() {
       </div>
 
       <div class="eh-menu-section">
-        <div class="eh-menu-label">{msg('popupOverlay')}</div>
-        <Checkbox
-          id="eh-menu-overlayView"
-          setting="overlayView"
-          checked={settings.value.overlayView}
-          onSave={saveSetting}
-          label={msg('popupOverlayView')}
+        <div class="eh-menu-label">{msg('popupViewMode')}</div>
+        <Segmented
+          setting="viewMode"
+          current={
+            settings.value.spreadView ? 'spread' : settings.value.overlayView ? 'single' : 'off'
+          }
+          onSave={function (patch) {
+            const mode = patch.viewMode as string;
+            if (mode === 'off') {
+              saveSetting({ overlayView: false, spreadView: false });
+            } else if (mode === 'single') {
+              saveSetting({ overlayView: true, spreadView: false });
+            } else if (mode === 'spread') {
+              saveSetting({ overlayView: true, spreadView: true });
+            }
+          }}
+          className="eh-menu-seg"
+          options={[
+            { value: 'off', label: msg('popupOff') },
+            { value: 'single', label: msg('popupViewSingle') },
+            { value: 'spread', label: msg('popupViewSpread') }
+          ]}
         />
-        <div class="eh-menu-group-checks">
-          <Checkbox
-            id="eh-menu-spreadView"
-            setting="spreadView"
-            checked={settings.value.spreadView}
-            onSave={saveSetting}
-            label={msg('popupSpreadView')}
-          />
+        {settings.value.spreadView && (
           <Checkbox
             id="eh-menu-spreadCoverAlone"
             setting="spreadCoverAlone"
@@ -90,7 +98,7 @@ function MenuPanel() {
             onSave={saveSetting}
             label={msg('popupSpreadCoverAlone')}
           />
-        </div>
+        )}
       </div>
 
       <div class="eh-menu-actions">

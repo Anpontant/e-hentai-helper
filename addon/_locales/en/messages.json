@@ -47,14 +47,14 @@
   "popupFullscreenToggled": {
     "message": "Fullscreen toggled"
   },
-  "popupOverlay": {
-    "message": "Overlay"
+  "popupViewMode": {
+    "message": "View"
   },
-  "popupOverlayView": {
-    "message": "Overlay view"
+  "popupViewSingle": {
+    "message": "Single"
   },
-  "popupSpreadView": {
-    "message": "Spread view"
+  "popupViewSpread": {
+    "message": "Spread"
   },
   "popupSpreadCoverAlone": {
     "message": "Cover alone"

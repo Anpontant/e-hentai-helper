@@ -41,20 +41,17 @@
       </section>
 
       <section class="group">
-        <div class="label" data-i18n="popupOverlay"></div>
-        <label
-          ><input type="checkbox" id="overlayView" /><span data-i18n="popupOverlayView"></span
-        ></label>
-        <div class="group-checks">
-          <label
-            ><input type="checkbox" id="spreadView" /><span data-i18n="popupSpreadView"></span
-          ></label>
-          <label
-            ><input type="checkbox" id="spreadCoverAlone" /><span
-              data-i18n="popupSpreadCoverAlone"
-            ></span
-          ></label>
+        <div class="label" data-i18n="popupViewMode"></div>
+        <div class="segmented" data-setting="viewMode">
+          <button type="button" data-value="off" data-i18n="popupOff"></button>
+          <button type="button" data-value="single" data-i18n="popupViewSingle"></button>
+          <button type="button" data-value="spread" data-i18n="popupViewSpread"></button>
         </div>
+        <label id="coverAloneLabel"
+          ><input type="checkbox" id="spreadCoverAlone" /><span
+            data-i18n="popupSpreadCoverAlone"
+          ></span
+        ></label>
       </section>
 
       <section class="actions">
