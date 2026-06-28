@@ -303,14 +303,13 @@ export function retryImage(side: 'left' | 'right') {
 export function exitOverlay() {
   const galleryUrl = getGalleryBaseUrl();
 
-  settings.value = { ...settings.value, overlayView: false, spreadView: false };
-  browser.storage.local.set({ overlayView: false, spreadView: false });
   removeSpreadOverlayState();
   clearPageMapsStorage();
 
   if (galleryUrl) {
     location.href = galleryUrl;
   } else {
+    settings.value = { ...settings.value, overlayView: false, spreadView: false };
     applyImageFit();
     scrollToImage();
   }
