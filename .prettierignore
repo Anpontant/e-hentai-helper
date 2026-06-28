@@ -1,6 +1,7 @@
 dist/
 node_modules/
 .claude/skills/
+CLAUDE.md
 .playwright-cli/
 addon/content/content.js
 addon/popup/popup.js
