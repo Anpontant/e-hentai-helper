@@ -3,9 +3,9 @@
   "version": "0.2.2",
   "scripts": {
     "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
-    "addon:dev": "npx web-ext run --source-dir addon --firefox-profile .web-ext-profile --keep-profile-changes --start-url about:debugging#/runtime/this-firefox",
-    "addon:dev:e": "npx web-ext run --source-dir addon --firefox-profile .web-ext-profile --keep-profile-changes --start-url https://e-hentai.org/",
-    "addon:dev:ex": "npx web-ext run --source-dir addon --firefox-profile .web-ext-profile --keep-profile-changes --start-url https://exhentai.org/",
+    "addon:dev": "npx web-ext run --source-dir addon --firefox-profile ./.web-ext-profile --profile-create-if-missing --keep-profile-changes --start-url about:debugging#/runtime/this-firefox",
+    "addon:dev:e": "npx web-ext run --source-dir addon --firefox-profile ./.web-ext-profile --profile-create-if-missing --keep-profile-changes --start-url https://e-hentai.org/",
+    "addon:dev:ex": "npx web-ext run --source-dir addon --firefox-profile ./.web-ext-profile --profile-create-if-missing --keep-profile-changes --start-url https://exhentai.org/",
     "addon:lint": "npx web-ext lint --source-dir addon --self-hosted",
     "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",
     "check": "npm run lint && npm run format:check && npm run addon:lint && npm run addon:build",
@@ -20,6 +20,6 @@
     "eslint": "^8.57.1",
     "globals": "^17.7.0",
     "prettier": "^3.8.5",
-    "web-ext": "^8.0.0"
+    "web-ext": "^10.4.0"
   }
 }
