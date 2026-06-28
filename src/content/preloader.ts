@@ -6,7 +6,7 @@ import {
   getUrlTail,
   getSpreadPageInfo,
   formatDuration
-} from '../shared/viewer-utils.mjs';
+} from '../shared/viewer-utils.js';
 import {
   getMainImage,
   getCurrentKey,
@@ -21,19 +21,18 @@ import {
   pageImageMap,
   persistPageMaps
 } from './navigation.js';
+import type { PreloadStateEntry } from '../shared/types.js';
 import { isOverlayActive, showStatus, showStatusLines } from './status.js';
 
-var lastPreloadRootKey = '';
-var preloadState = {};
-var preloadRunId = 0;
-var preloadedImages = [];
-var preloadAbortController = null;
+let lastPreloadRootKey = '';
+let preloadState: Record<number, PreloadStateEntry> = {};
+let preloadRunId = 0;
+let preloadedImages: HTMLImageElement[] = [];
+let preloadAbortController: AbortController | null = null;
 
-function log() {
+function log(...args: unknown[]) {
   if (!LOG || !window.console) return;
-  var args = Array.prototype.slice.call(arguments);
-  args.unshift('[EH helper]');
-  console.log.apply(console, args);
+  console.log.apply(console, ['[EH helper]', ...args]);
 }
 
 export function abortActivePreload() {
@@ -49,18 +48,18 @@ export function resetPreloadRootKey() {
 }
 
 function removeOldPreloadFrames() {
-  var frames = document.querySelectorAll('.eh-helper-preload-frame');
-  for (var i = 0; i < frames.length; i += 1) {
-    if (frames[i].parentNode) frames[i].parentNode.removeChild(frames[i]);
+  const frames = document.querySelectorAll('.eh-helper-preload-frame');
+  for (let i = 0; i < frames.length; i += 1) {
+    frames[i].remove();
   }
   preloadedImages = [];
   preloadThumbs.value = [];
 }
 
 function updatePreloadStatus() {
-  var parts = [];
-  for (var i = 1; i <= settings.value.preloadAheadCount; i += 1) {
-    var item = preloadState[i];
+  const parts: string[] = [];
+  for (let i = 1; i <= settings.value.preloadAheadCount; i += 1) {
+    const item = preloadState[i];
     if (!item) continue;
 
     if (item.status === 'loading') {
@@ -89,15 +88,15 @@ function updatePreloadStatus() {
   }
 }
 
-function setPreloadState(depth, patch) {
+function setPreloadState(depth: number, patch: Partial<PreloadStateEntry>) {
   preloadState[depth] = Object.assign(preloadState[depth] || {}, patch);
   if (settings.value.showStatus) updatePreloadStatus();
 }
 
-function preloadImage(imageUrl) {
-  return new Promise(function (resolve, reject) {
-    var image = new Image();
-    var timeout = window.setTimeout(function () {
+function preloadImage(imageUrl: string) {
+  return new Promise<void>(function (resolve, reject) {
+    const image = new Image();
+    const timeout = window.setTimeout(function () {
       reject(new Error('image preload timeout'));
     }, IMAGE_PRELOAD_TIMEOUT_MS);
 
@@ -115,8 +114,8 @@ function preloadImage(imageUrl) {
   });
 }
 
-function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
-  return new Promise(function (resolve) {
+function preloadByHiddenFrame(nextUrl: string, depth: number, startedAt: number, runId: number) {
+  return new Promise<string>(function (resolve) {
     if (runId !== preloadRunId) {
       resolve('');
       return;
@@ -130,7 +129,7 @@ function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
       method: 'iframe'
     });
 
-    var frameEl = document.createElement('iframe');
+    const frameEl = document.createElement('iframe');
     frameEl.className = 'eh-helper-preload-frame';
     frameEl.id = 'eh-helper-preload-frame-' + depth;
     frameEl.src = nextUrl;
@@ -140,7 +139,7 @@ function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
     frameEl.addEventListener(
       'load',
       function () {
-        var followingUrl = '';
+        let followingUrl = '';
         if (runId !== preloadRunId) {
           frameEl.remove();
           resolve('');
@@ -148,8 +147,8 @@ function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
         }
 
         try {
-          var frameDoc = frameEl.contentDocument || frameEl.contentWindow.document;
-          var page = getPageLabelFromDocument(frameDoc, nextUrl);
+          const frameDoc = frameEl.contentDocument || frameEl.contentWindow!.document;
+          const page = getPageLabelFromDocument(frameDoc, nextUrl);
           followingUrl = getNextPageUrlFromDocument(frameDoc, nextUrl);
           setPreloadState(depth, {
             status: 'loaded',
@@ -192,12 +191,12 @@ function preloadByHiddenFrame(nextUrl, depth, startedAt, runId) {
   });
 }
 
-function preloadAheadFrom(nextUrl, depth) {
+function preloadAheadFrom(nextUrl: string, depth: number) {
   if (!nextUrl || depth > settings.value.preloadAheadCount) return;
 
-  var runId = preloadRunId;
-  var startedAt = Date.now();
-  var pageNum = parseInt(getViewerPageFromUrl(nextUrl), 10);
+  const runId = preloadRunId;
+  const startedAt = Date.now();
+  const pageNum = parseInt(getViewerPageFromUrl(nextUrl), 10);
   if (pageNum) pageUrlMap[pageNum] = nextUrl;
   persistPageMaps();
 
@@ -213,15 +212,15 @@ function preloadAheadFrom(nextUrl, depth) {
     .then(function (doc) {
       if (runId !== preloadRunId) return '';
 
-      var page = getPageLabelFromDocument(doc, nextUrl);
-      var imageUrl = getImageUrlFromDocument(doc, nextUrl);
-      var followingUrl = getNextPageUrlFromDocument(doc, nextUrl);
+      const page = getPageLabelFromDocument(doc, nextUrl);
+      const imageUrl = getImageUrlFromDocument(doc, nextUrl);
+      const followingUrl = getNextPageUrlFromDocument(doc, nextUrl);
 
       if (!imageUrl) throw new Error('next image url not found');
 
       if (pageNum) pageImageMap[pageNum] = imageUrl;
       if (followingUrl) {
-        var followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
+        const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
         if (followingPage) pageUrlMap[followingPage] = followingUrl;
       }
       persistPageMaps();
@@ -258,7 +257,7 @@ export function preloadNext() {
     return;
   }
 
-  var rootKey = getCurrentKey();
+  const rootKey = getCurrentKey();
   if (rootKey === lastPreloadRootKey) return;
   lastPreloadRootKey = rootKey;
   abortActivePreload();
@@ -266,29 +265,29 @@ export function preloadNext() {
   removeOldPreloadFrames();
   preloadState = {};
 
-  var nextUrl = getNextPageUrl();
+  const nextUrl = getNextPageUrl();
   if (!nextUrl) {
     showStatus('EH: next not found');
     return;
   }
 
   if (isOverlayActive()) {
-    var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-    var totalStr = getTotalPageLabel();
-    var total = parseInt(totalStr, 10) || 0;
-    var info = settings.value.spreadView
+    const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+    const totalStr = getTotalPageLabel();
+    const total = parseInt(totalStr, 10) || 0;
+    const info = settings.value.spreadView
       ? getSpreadPageInfo(currentPage, total, settings.value.spreadCoverAlone)
       : { pagesInSpread: 1 };
-    var afterSpreadPage = currentPage + info.pagesInSpread + 1;
-    var afterSpreadUrl = pageUrlMap[afterSpreadPage];
+    const afterSpreadPage = currentPage + info.pagesInSpread + 1;
+    const afterSpreadUrl = pageUrlMap[afterSpreadPage];
     if (afterSpreadUrl) {
       preloadAheadFrom(afterSpreadUrl, 1);
       return;
     }
 
-    var cachedDoc = viewerDocCache.get(nextUrl);
+    const cachedDoc = viewerDocCache.get(nextUrl);
     if (cachedDoc) {
-      var afterPartner = getNextPageUrlFromDocument(cachedDoc, nextUrl);
+      const afterPartner = getNextPageUrlFromDocument(cachedDoc, nextUrl);
       if (afterPartner) {
         preloadAheadFrom(afterPartner, 1);
       }
@@ -300,7 +299,7 @@ export function preloadNext() {
 }
 
 export function schedulePreloadAfterCurrentImage() {
-  var img = getMainImage();
+  const img = getMainImage();
   if (!img || img.complete) {
     window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
     return;

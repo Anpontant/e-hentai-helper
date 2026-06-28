@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as utils from '../src/shared/viewer-utils.mjs';
+import * as utils from '../src/shared/viewer-utils.js';
 
 test('normalizeUrl strips the hash fragment', () => {
   assert.equal(

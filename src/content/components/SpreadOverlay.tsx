@@ -4,7 +4,7 @@ import { advanceSpread, retreatSpread, exitOverlay } from '../spread.js';
 import { applySpreadFit } from '../fit.js';
 
 export function SpreadOverlay() {
-  var state = spreadState.value;
+  const state = spreadState.value;
 
   useEffect(
     function () {
@@ -17,12 +17,12 @@ export function SpreadOverlay() {
 
   if (!state.active) return null;
 
-  function handleClick(event) {
-    if (event.target.id === 'eh-helper-spread-close') return;
+  function handleClick(event: MouseEvent) {
+    if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
     event.preventDefault();
     event.stopPropagation();
-    var overlay = document.getElementById('eh-helper-spread-overlay');
-    var midX = overlay ? overlay.clientWidth / 2 : window.innerWidth / 2;
+    const overlay = document.getElementById('eh-helper-spread-overlay');
+    const midX = overlay ? overlay.clientWidth / 2 : window.innerWidth / 2;
     if (event.clientX < midX) {
       advanceSpread();
     } else {
@@ -30,16 +30,16 @@ export function SpreadOverlay() {
     }
   }
 
-  function handleClose(event) {
+  function handleClose(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
     exitOverlay();
   }
 
-  function handleMouseMove(event) {
-    var overlay = event.currentTarget;
-    var midX = overlay.clientWidth / 2;
-    var cls = event.clientX < midX ? 'eh-cursor-left' : 'eh-cursor-right';
+  function handleMouseMove(event: MouseEvent) {
+    const overlay = event.currentTarget as HTMLElement;
+    const midX = overlay.clientWidth / 2;
+    const cls = event.clientX < midX ? 'eh-cursor-left' : 'eh-cursor-right';
     if (!overlay.classList.contains(cls)) {
       overlay.classList.remove('eh-cursor-left', 'eh-cursor-right');
       overlay.classList.add(cls);

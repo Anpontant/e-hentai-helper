@@ -1,3 +1,4 @@
+import type { FitMode } from '../shared/types.js';
 import { settings } from './state.js';
 import { getMainImage } from './navigation.js';
 
@@ -5,7 +6,13 @@ function getHeadOrRoot() {
   return document.head || document.documentElement;
 }
 
-function getFitProperties(mode) {
+interface FitProperties {
+  maxHeight: string;
+  maxWidth: string;
+  objectFit: string;
+}
+
+function getFitProperties(mode: FitMode): FitProperties {
   if (mode === 'height') {
     return { maxHeight: '100vh', maxWidth: 'none', objectFit: 'contain' };
   }
@@ -15,7 +22,7 @@ function getFitProperties(mode) {
   return { maxHeight: 'none', maxWidth: 'none', objectFit: 'fill' };
 }
 
-function buildFitCss(selector, props) {
+function buildFitCss(selector: string, props: FitProperties) {
   return [
     selector + ' {',
     'max-height: ' + props.maxHeight + ' !important;',
@@ -27,11 +34,11 @@ function buildFitCss(selector, props) {
   ].join('\n');
 }
 
-function ensureStyleElement(id) {
-  var parent = getHeadOrRoot();
+function ensureStyleElement(id: string) {
+  const parent = getHeadOrRoot();
   if (!parent) return null;
 
-  var styleEl = document.getElementById(id);
+  let styleEl = document.getElementById(id);
   if (!styleEl) {
     styleEl = document.createElement('style');
     styleEl.id = id;
@@ -41,19 +48,19 @@ function ensureStyleElement(id) {
 }
 
 export function updateFitStyle() {
-  var styleEl = ensureStyleElement('eh-helper-fit-style');
+  const styleEl = ensureStyleElement('eh-helper-fit-style');
   if (!styleEl) return;
 
-  var props = getFitProperties(settings.value.fitMode);
+  const props = getFitProperties(settings.value.fitMode);
   styleEl.textContent = buildFitCss('#img', props);
 }
 
 export function applyImageFit() {
-  var img = getMainImage();
+  const img = getMainImage();
   updateFitStyle();
   if (!img) return;
 
-  var props = getFitProperties(settings.value.fitMode);
+  const props = getFitProperties(settings.value.fitMode);
   img.style.setProperty('max-height', props.maxHeight, 'important');
   img.style.setProperty('max-width', props.maxWidth, 'important');
   img.style.setProperty('width', 'auto', 'important');
@@ -61,11 +68,11 @@ export function applyImageFit() {
   img.style.setProperty('object-fit', props.objectFit, 'important');
 }
 
-export function applySpreadFit(isSingle) {
-  var styleEl = ensureStyleElement('eh-helper-spread-fit-style');
+export function applySpreadFit(isSingle: boolean) {
+  const styleEl = ensureStyleElement('eh-helper-spread-fit-style');
   if (!styleEl) return;
 
-  var props = getFitProperties(settings.value.fitMode);
+  let props = getFitProperties(settings.value.fitMode);
   if (props.maxWidth !== 'none') {
     props = { ...props, maxWidth: isSingle ? '100vw' : '50vw' };
   }
@@ -73,6 +80,6 @@ export function applySpreadFit(isSingle) {
 }
 
 export function removeSpreadFitStyle() {
-  var fitStyle = document.getElementById('eh-helper-spread-fit-style');
+  const fitStyle = document.getElementById('eh-helper-spread-fit-style');
   if (fitStyle && fitStyle.parentNode) fitStyle.parentNode.removeChild(fitStyle);
 }

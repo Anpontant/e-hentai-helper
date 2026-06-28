@@ -5,7 +5,7 @@ import { SpreadOverlay } from './SpreadOverlay.jsx';
 import { PreloadThumbs } from './PreloadThumbs.jsx';
 
 export function App() {
-  var s = settings.value;
+  const s = settings.value;
 
   return (
     <>

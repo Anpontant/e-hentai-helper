@@ -1,7 +1,7 @@
 import { preloadThumbs } from '../state.js';
 
 export function PreloadThumbs() {
-  var thumbs = preloadThumbs.value;
+  const thumbs = preloadThumbs.value;
   if (!thumbs.length) return null;
 
   return (

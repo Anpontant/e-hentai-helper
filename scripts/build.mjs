@@ -13,8 +13,8 @@ const shared = {
 };
 
 const entries = [
-  { entryPoints: ['src/content/main.jsx'], outfile: 'addon/content/content.js' },
-  { entryPoints: ['src/popup/main.js'], outfile: 'addon/popup/popup.js' }
+  { entryPoints: ['src/content/main.tsx'], outfile: 'addon/content/content.js' },
+  { entryPoints: ['src/popup/main.ts'], outfile: 'addon/popup/popup.js' }
 ];
 
 if (watch) {

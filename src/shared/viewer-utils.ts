@@ -1,35 +1,37 @@
-export const PRELOAD_OPTIONS = [0, 1, 2, 3];
-export const FIT_OPTIONS = ['height', 'width', 'original'];
+import type { FitMode, PagePair, Settings, SpreadPageInfo } from './types.js';
 
-export function normalizeUrl(url) {
+export const PRELOAD_OPTIONS = [0, 1, 2, 3];
+export const FIT_OPTIONS: FitMode[] = ['height', 'width', 'original'];
+
+export function normalizeUrl(url: string) {
   return String(url || '').split('#')[0];
 }
 
-export function isViewerUrl(url) {
+export function isViewerUrl(url: string) {
   return typeof url === 'string' && /\/s\//.test(url);
 }
 
-export function getViewerPageFromUrl(url) {
-  var match = normalizeUrl(url).match(/\/s\/[^/]+\/[^/]+-(\d+)/);
+export function getViewerPageFromUrl(url: string) {
+  const match = normalizeUrl(url).match(/\/s\/[^/]+\/[^/]+-(\d+)/);
   return match ? match[1] : '';
 }
 
-export function getGalleryIdFromUrl(url) {
-  var match = normalizeUrl(url).match(/\/s\/[^/]+\/(\d+)-\d+/);
+export function getGalleryIdFromUrl(url: string) {
+  const match = normalizeUrl(url).match(/\/s\/[^/]+\/(\d+)-\d+/);
   return match ? match[1] : '';
 }
 
-export function parsePagePair(text) {
-  var normalized = String(text || '')
+export function parsePagePair(text: string): PagePair | null {
+  const normalized = String(text || '')
     .replace(/\s+/g, ' ')
     .trim();
   if (/\.(?:jpg|jpeg|png|gif|webp)\b/i.test(normalized)) return null;
 
-  var match = normalized.match(/^(?:[^\d]*)?(\d{1,5})\s*\/\s*(\d{1,5})(?:[^\d]*)?$/);
+  const match = normalized.match(/^(?:[^\d]*)?(\d{1,5})\s*\/\s*(\d{1,5})(?:[^\d]*)?$/);
   if (!match) return null;
 
-  var current = parseInt(match[1], 10);
-  var total = parseInt(match[2], 10);
+  const current = parseInt(match[1], 10);
+  const total = parseInt(match[2], 10);
   if (!current || !total || current > total) return null;
 
   return {
@@ -38,22 +40,26 @@ export function parsePagePair(text) {
   };
 }
 
-export function getUrlTail(url) {
-  var parts = normalizeUrl(url).split('/');
+export function getUrlTail(url: string) {
+  const parts = normalizeUrl(url).split('/');
   return parts.length ? parts[parts.length - 1] : '?';
 }
 
-export function formatDuration(ms) {
+export function formatDuration(ms: number) {
   if (ms < 1000) return ms + 'ms';
   return (ms / 1000).toFixed(1) + 's';
 }
 
-export function getSpreadPageInfo(currentPage, totalPages, coverAlone) {
+export function getSpreadPageInfo(
+  currentPage: number,
+  totalPages: number,
+  coverAlone: boolean
+): SpreadPageInfo {
   if (currentPage < 1) {
     return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
   }
 
-  var isRightPage;
+  let isRightPage;
   if (coverAlone) {
     if (currentPage === 1) {
       return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
@@ -67,15 +73,15 @@ export function getSpreadPageInfo(currentPage, totalPages, coverAlone) {
     return { partnerPage: null, pagesInSpread: 1, isRightPage: false };
   }
 
-  var partner = currentPage + 1;
+  const partner = currentPage + 1;
   if (totalPages > 0 && partner > totalPages) {
     return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
   }
   return { partnerPage: partner, pagesInSpread: 2, isRightPage: true };
 }
 
-export function normalizeSettings(stored, defaults) {
-  var settings = Object.assign({}, defaults, stored || {});
+export function normalizeSettings(stored: Partial<Settings>, defaults: Settings): Settings {
+  const settings = Object.assign({}, defaults, stored || {});
   if (PRELOAD_OPTIONS.indexOf(settings.preloadAheadCount) === -1) {
     settings.preloadAheadCount = defaults.preloadAheadCount;
   }

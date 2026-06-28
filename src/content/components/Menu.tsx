@@ -5,7 +5,7 @@ import { scrollToImage } from '../scroll.js';
 import { Segmented } from '../../shared/components/Segmented.jsx';
 import { Checkbox } from '../../shared/components/Checkbox.jsx';
 
-function msg(key) {
+function msg(key: string) {
   return browser.i18n.getMessage(key) || key;
 }
 
@@ -120,16 +120,16 @@ function MenuPanel() {
 }
 
 export function Menu() {
-  var open = menuOpen.value;
+  const open = menuOpen.value;
 
   useEffect(
     function () {
       if (!open) return;
-      function handleClick(e) {
-        var btn = document.getElementById('eh-helper-menu-btn');
-        var panel = document.getElementById('eh-helper-menu-panel');
-        if (btn && btn.contains(e.target)) return;
-        if (panel && panel.contains(e.target)) return;
+      function handleClick(e: MouseEvent) {
+        const btn = document.getElementById('eh-helper-menu-btn');
+        const panel = document.getElementById('eh-helper-menu-panel');
+        if (btn && btn.contains(e.target as Node)) return;
+        if (panel && panel.contains(e.target as Node)) return;
         menuOpen.value = false;
       }
       document.addEventListener('click', handleClick, true);

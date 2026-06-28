@@ -1,5 +1,5 @@
 import { settings, spreadState } from './state.js';
-import { getViewerPageFromUrl, getSpreadPageInfo } from '../shared/viewer-utils.mjs';
+import { getViewerPageFromUrl, getSpreadPageInfo } from '../shared/viewer-utils.js';
 import {
   getMainImage,
   getNextPageUrl,
@@ -21,17 +21,17 @@ import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
 
-var spreadRenderRunId = 0;
-var lastSpreadActive = false;
+let spreadRenderRunId = 0;
+let lastSpreadActive = false;
 
-function loadPartnerImage(partnerPage, runId, callback) {
-  var cachedImage = pageImageMap[partnerPage];
+function loadPartnerImage(partnerPage: number, runId: number, callback: (src: string) => void) {
+  const cachedImage = pageImageMap[partnerPage];
   if (cachedImage) {
     callback(cachedImage);
     return;
   }
 
-  var partnerUrl = pageUrlMap[partnerPage] || getNextPageUrl();
+  const partnerUrl = pageUrlMap[partnerPage] || getNextPageUrl();
   if (!partnerUrl) {
     callback('');
     return;
@@ -43,14 +43,14 @@ function loadPartnerImage(partnerPage, runId, callback) {
   fetchViewerDocument(partnerUrl)
     .then(function (doc) {
       if (runId !== spreadRenderRunId) return;
-      var imageUrl = getImageUrlFromDocument(doc, partnerUrl);
+      const imageUrl = getImageUrlFromDocument(doc, partnerUrl);
       if (imageUrl) {
         pageImageMap[partnerPage] = imageUrl;
         callback(imageUrl);
       }
-      var followingUrl = getNextPageUrlFromDocument(doc, partnerUrl);
+      const followingUrl = getNextPageUrlFromDocument(doc, partnerUrl);
       if (followingUrl) {
-        var followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
+        const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
         if (followingPage) pageUrlMap[followingPage] = followingUrl;
       }
       persistPageMaps();
@@ -61,18 +61,19 @@ function loadPartnerImage(partnerPage, runId, callback) {
     });
 }
 
-export function renderSpread(skipSnap) {
-  var s = settings.value;
+export function renderSpread(skipSnap?: boolean) {
+  const s = settings.value;
   if (!s.overlayView && !s.spreadView) return;
 
-  var mainImg = getMainImage();
+  const mainImg = getMainImage();
   if (!mainImg) return;
+  const img = mainImg;
 
-  var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-  var totalStr = getTotalPageLabel();
-  var total = parseInt(totalStr, 10) || 0;
-  var useSpread = s.spreadView;
-  var info = useSpread
+  const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const totalStr = getTotalPageLabel();
+  const total = parseInt(totalStr, 10) || 0;
+  const useSpread = s.spreadView;
+  let info = useSpread
     ? getSpreadPageInfo(currentPage, total, s.spreadCoverAlone)
     : { partnerPage: null, pagesInSpread: 1, isRightPage: true };
 
@@ -80,34 +81,34 @@ export function renderSpread(skipSnap) {
     if (skipSnap) {
       info = { partnerPage: null, pagesInSpread: 1, isRightPage: true };
     } else {
-      var snapUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
+      const snapUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
       if (snapUrl) location.href = snapUrl;
       return;
     }
   }
 
   pageUrlMap[currentPage] = location.href;
-  if (mainImg.src && !pageImageMap[currentPage]) pageImageMap[currentPage] = mainImg.src;
+  if (img.src && !pageImageMap[currentPage]) pageImageMap[currentPage] = img.src;
   persistPageMaps();
 
   spreadRenderRunId += 1;
-  var runId = spreadRenderRunId;
+  const runId = spreadRenderRunId;
 
-  var cachedSrc = pageImageMap[currentPage];
-  var rightSrc = cachedSrc || mainImg.src || '';
-  var rightFallbackSrc = cachedSrc ? mainImg.src || '' : '';
+  const cachedSrc = pageImageMap[currentPage];
+  const rightSrc = cachedSrc || img.src || '';
+  const rightFallbackSrc = cachedSrc ? img.src || '' : '';
 
-  if (!mainImg.complete) {
-    mainImg.addEventListener(
+  if (!img.complete) {
+    img.addEventListener(
       'load',
       function () {
         if (runId !== spreadRenderRunId) return;
-        if (!cachedSrc && mainImg.src) {
-          pageImageMap[currentPage] = mainImg.src;
+        if (!cachedSrc && img.src) {
+          pageImageMap[currentPage] = img.src;
           persistPageMaps();
           spreadState.value = {
             ...spreadState.value,
-            rightSrc: mainImg.src || ''
+            rightSrc: img.src || ''
           };
         }
       },
@@ -138,15 +139,15 @@ export function renderSpread(skipSnap) {
   }
 }
 
-function navigateViaGalleryMap(targetPage, fallback) {
-  var galleryUrl = getGalleryBaseUrl();
+function navigateViaGalleryMap(targetPage: number, fallback: () => void) {
+  const galleryUrl = getGalleryBaseUrl();
   if (!galleryUrl) {
     fallback();
     return;
   }
   fetchGalleryPageUrls(galleryUrl, targetPage)
     .then(function () {
-      var url = pageUrlMap[targetPage];
+      const url = pageUrlMap[targetPage];
       if (url) {
         location.href = url;
       } else {
@@ -158,17 +159,20 @@ function navigateViaGalleryMap(targetPage, fallback) {
     });
 }
 
-function fetchAndNavigate(adjacentUrl, getUrlFromDoc) {
-  var cached = viewerDocCache.get(adjacentUrl);
+function fetchAndNavigate(
+  adjacentUrl: string,
+  getUrlFromDoc: (doc: Document, url: string) => string
+) {
+  const cached = viewerDocCache.get(adjacentUrl);
   if (cached) {
-    var target = getUrlFromDoc(cached, adjacentUrl);
+    const target = getUrlFromDoc(cached, adjacentUrl);
     location.href = target || adjacentUrl;
     return;
   }
 
   fetchViewerDocument(adjacentUrl)
     .then(function (doc) {
-      var target = getUrlFromDoc(doc, adjacentUrl);
+      const target = getUrlFromDoc(doc, adjacentUrl);
       location.href = target || adjacentUrl;
     })
     .catch(function () {
@@ -177,16 +181,16 @@ function fetchAndNavigate(adjacentUrl, getUrlFromDoc) {
 }
 
 export function advanceSpread() {
-  var s = settings.value;
-  var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-  var totalStr = getTotalPageLabel();
-  var total = parseInt(totalStr, 10) || 0;
-  var info = s.spreadView
+  const s = settings.value;
+  const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const totalStr = getTotalPageLabel();
+  const total = parseInt(totalStr, 10) || 0;
+  const info = s.spreadView
     ? getSpreadPageInfo(currentPage, total, s.spreadCoverAlone)
     : { partnerPage: null, pagesInSpread: 1, isRightPage: true };
-  var targetPage = currentPage + info.pagesInSpread;
+  const targetPage = currentPage + info.pagesInSpread;
 
-  var mapped = pageUrlMap[targetPage];
+  const mapped = pageUrlMap[targetPage];
   if (mapped) {
     location.href = mapped;
     return;
@@ -194,12 +198,12 @@ export function advanceSpread() {
 
   navigateViaGalleryMap(targetPage, function () {
     if (info.pagesInSpread === 1) {
-      var nextUrl = getNextPageUrl();
+      const nextUrl = getNextPageUrl();
       if (nextUrl) location.href = nextUrl;
       return;
     }
 
-    var partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
+    const partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
     if (!partnerUrl) return;
 
     fetchAndNavigate(partnerUrl, getNextPageUrlFromDocument);
@@ -207,18 +211,18 @@ export function advanceSpread() {
 }
 
 export function retreatSpread() {
-  var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-  var targetPage = Math.max(1, currentPage - 2);
+  const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const targetPage = Math.max(1, currentPage - 2);
   if (targetPage >= currentPage) return;
 
-  var mapped = pageUrlMap[targetPage];
+  const mapped = pageUrlMap[targetPage];
   if (mapped) {
     location.href = mapped;
     return;
   }
 
   navigateViaGalleryMap(targetPage, function () {
-    var prevUrl = getPrevPageUrl();
+    const prevUrl = getPrevPageUrl();
     if (!prevUrl) return;
 
     if (currentPage - targetPage === 1) {
@@ -259,9 +263,9 @@ function removeSpreadOverlayState() {
 }
 
 export function updateSpreadVisibility() {
-  var s = settings.value;
+  const s = settings.value;
   if (s.overlayView || s.spreadView) {
-    var skipSnap = lastSpreadActive && s.spreadView;
+    const skipSnap = lastSpreadActive && s.spreadView;
     renderSpread(skipSnap);
     lastSpreadActive = s.spreadView;
   } else {
