@@ -121,18 +121,22 @@ function init() {
     });
   });
 
-  document.getElementById('btn-fullscreen')!.addEventListener('click', function () {
-    browser.windows
-      .getCurrent()
-      .then(function (win) {
-        return browser.windows.update(win.id, {
-          state: win.state === 'fullscreen' ? 'normal' : 'fullscreen'
+  if (typeof browser.windows !== 'undefined') {
+    document.getElementById('btn-fullscreen')!.addEventListener('click', function () {
+      browser.windows
+        .getCurrent()
+        .then(function (win) {
+          return browser.windows.update(win.id!, {
+            state: win.state === 'fullscreen' ? 'normal' : 'fullscreen'
+          });
+        })
+        .then(function () {
+          showHint('popupFullscreenToggled');
         });
-      })
-      .then(function () {
-        showHint('popupFullscreenToggled');
-      });
-  });
+    });
+  } else {
+    document.getElementById('btn-fullscreen')!.style.display = 'none';
+  }
 
   browser.storage.local.get(DEFAULT_SETTINGS).then(function (stored) {
     settings = stored as Settings;

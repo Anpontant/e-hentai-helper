@@ -3,6 +3,7 @@ node_modules/
 .claude/skills/
 CLAUDE.md
 .playwright-cli/
+addon/background/background.js
 addon/content/content.js
 addon/popup/popup.js
 package-lock.json

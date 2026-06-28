@@ -115,11 +115,10 @@ function setupMessageHandlers() {
     }
 
     if (message.type === 'toggle-fullscreen') {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        document.documentElement.requestFullscreen();
-      }
+      const p = document.fullscreenElement
+        ? document.exitFullscreen()
+        : document.documentElement.requestFullscreen();
+      p.catch(function () {});
       return Promise.resolve({ ok: true });
     }
 

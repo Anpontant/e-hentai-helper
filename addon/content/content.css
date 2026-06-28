@@ -85,14 +85,14 @@
   top: 8px;
   left: 8px;
   z-index: 1;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  font-size: 20px;
-  line-height: 32px;
+  font-size: 24px;
+  line-height: 44px;
   text-align: center;
   cursor: pointer;
   padding: 0;
@@ -100,7 +100,8 @@
   transition: opacity 0.15s;
 }
 
-#eh-helper-spread-close:hover {
+#eh-helper-spread-close:hover,
+#eh-helper-spread-close:active {
   opacity: 1;
   background: rgba(255, 255, 255, 0.3);
 }
@@ -157,14 +158,14 @@
   top: 8px;
   right: 8px;
   z-index: 2147483647;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
   font-size: 22px;
-  line-height: 36px;
+  line-height: 44px;
   text-align: center;
   cursor: pointer;
   padding: 0;
@@ -173,6 +174,7 @@
 }
 
 #eh-helper-menu-btn:hover,
+#eh-helper-menu-btn:active,
 #eh-helper-menu-btn.eh-menu-open {
   opacity: 1;
   background: rgba(0, 0, 0, 0.7);
@@ -273,7 +275,8 @@
   font-size: 12px;
 }
 
-.eh-menu-actions button:hover {
+.eh-menu-actions button:hover,
+.eh-menu-actions button:active {
   background: rgba(255, 255, 255, 0.15);
 }
 

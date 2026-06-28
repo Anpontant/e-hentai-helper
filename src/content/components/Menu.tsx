@@ -111,9 +111,9 @@ function MenuPanel() {
           type="button"
           onClick={function () {
             if (document.fullscreenElement) {
-              document.exitFullscreen();
+              document.exitFullscreen().catch(function () {});
             } else {
-              document.documentElement.requestFullscreen();
+              document.documentElement.requestFullscreen().catch(function () {});
             }
           }}
         >
