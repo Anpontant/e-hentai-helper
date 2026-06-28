@@ -105,6 +105,14 @@ function PopupApp() {
             { value: '3', label: '+3' }
           ]}
         />
+        <div class="group-checks">
+          <Checkbox id="showStatus" setting="showStatus" label={msg('popupStatus')} />
+          <Checkbox
+            id="showPreloadThumbs"
+            setting="showPreloadThumbs"
+            label={msg('popupPreloadThumbs')}
+          />
+        </div>
       </section>
 
       <section class="group">
@@ -117,12 +125,13 @@ function PopupApp() {
             { value: 'original', label: '1:1' }
           ]}
         />
+        <Checkbox id="autoScroll" setting="autoScroll" label={msg('popupAutoScroll')} />
       </section>
 
       <section class="group">
         <div class="label">{msg('popupOverlay')}</div>
-        <div class="spread-checks">
-          <Checkbox id="overlayView" setting="overlayView" label={msg('popupOverlayView')} />
+        <Checkbox id="overlayView" setting="overlayView" label={msg('popupOverlayView')} />
+        <div class="group-checks">
           <Checkbox id="spreadView" setting="spreadView" label={msg('popupSpreadView')} />
           <Checkbox
             id="spreadCoverAlone"
@@ -130,16 +139,6 @@ function PopupApp() {
             label={msg('popupSpreadCoverAlone')}
           />
         </div>
-      </section>
-
-      <section class="checks">
-        <Checkbox id="autoScroll" setting="autoScroll" label={msg('popupAutoScroll')} />
-        <Checkbox id="showStatus" setting="showStatus" label={msg('popupStatus')} />
-        <Checkbox
-          id="showPreloadThumbs"
-          setting="showPreloadThumbs"
-          label={msg('popupPreloadThumbs')}
-        />
       </section>
 
       <section class="actions">

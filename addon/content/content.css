@@ -199,7 +199,7 @@
   border-color: #2468b2;
 }
 
-.eh-menu-checks {
+.eh-menu-group-checks {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;

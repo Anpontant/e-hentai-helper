@@ -61,6 +61,14 @@ function MenuPanel() {
             { value: '3', label: '+3' }
           ]}
         />
+        <div class="eh-menu-group-checks">
+          <Checkbox id="eh-menu-showStatus" setting="showStatus" label={msg('popupStatus')} />
+          <Checkbox
+            id="eh-menu-showPreloadThumbs"
+            setting="showPreloadThumbs"
+            label={msg('popupPreloadThumbs')}
+          />
+        </div>
       </div>
 
       <div class="eh-menu-section">
@@ -73,27 +81,20 @@ function MenuPanel() {
             { value: 'original', label: '1:1' }
           ]}
         />
+        <Checkbox id="eh-menu-autoScroll" setting="autoScroll" label={msg('popupAutoScroll')} />
       </div>
 
       <div class="eh-menu-section">
         <div class="eh-menu-label">{msg('popupOverlay')}</div>
         <Checkbox id="eh-menu-overlayView" setting="overlayView" label={msg('popupOverlayView')} />
-        <Checkbox id="eh-menu-spreadView" setting="spreadView" label={msg('popupSpreadView')} />
-        <Checkbox
-          id="eh-menu-spreadCoverAlone"
-          setting="spreadCoverAlone"
-          label={msg('popupSpreadCoverAlone')}
-        />
-      </div>
-
-      <div class="eh-menu-checks">
-        <Checkbox id="eh-menu-autoScroll" setting="autoScroll" label={msg('popupAutoScroll')} />
-        <Checkbox id="eh-menu-showStatus" setting="showStatus" label={msg('popupStatus')} />
-        <Checkbox
-          id="eh-menu-showPreloadThumbs"
-          setting="showPreloadThumbs"
-          label={msg('popupPreloadThumbs')}
-        />
+        <div class="eh-menu-group-checks">
+          <Checkbox id="eh-menu-spreadView" setting="spreadView" label={msg('popupSpreadView')} />
+          <Checkbox
+            id="eh-menu-spreadCoverAlone"
+            setting="spreadCoverAlone"
+            label={msg('popupSpreadCoverAlone')}
+          />
+        </div>
       </div>
 
       <div class="eh-menu-actions">
