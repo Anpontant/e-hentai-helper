@@ -1,194 +1,214 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-
+import { describe, test, expect } from 'vitest';
 import * as utils from '../src/shared/viewer-utils.js';
 
-test('normalizeUrl strips the hash fragment', () => {
-  assert.equal(
-    utils.normalizeUrl('https://e-hentai.org/s/abc/123-4#foo'),
-    'https://e-hentai.org/s/abc/123-4'
-  );
-  assert.equal(
-    utils.normalizeUrl('https://e-hentai.org/s/abc/123-4'),
-    'https://e-hentai.org/s/abc/123-4'
-  );
-  assert.equal(utils.normalizeUrl(undefined), '');
-  assert.equal(utils.normalizeUrl(null), '');
+describe('normalizeUrl', () => {
+  test('strips the hash fragment', () => {
+    expect(utils.normalizeUrl('https://e-hentai.org/s/abc/123-4#foo')).toBe(
+      'https://e-hentai.org/s/abc/123-4'
+    );
+    expect(utils.normalizeUrl('https://e-hentai.org/s/abc/123-4')).toBe(
+      'https://e-hentai.org/s/abc/123-4'
+    );
+    expect(utils.normalizeUrl(undefined as unknown as string)).toBe('');
+    expect(utils.normalizeUrl(null as unknown as string)).toBe('');
+  });
 });
 
-test('isViewerUrl detects viewer (/s/) URLs only', () => {
-  assert.equal(utils.isViewerUrl('https://e-hentai.org/s/abc/123-4'), true);
-  assert.equal(utils.isViewerUrl('https://exhentai.org/s/def/999-12'), true);
-  assert.equal(utils.isViewerUrl('https://e-hentai.org/g/123/abc/'), false);
-  assert.equal(utils.isViewerUrl(undefined), false);
-  assert.equal(utils.isViewerUrl(42), false);
+describe('isViewerUrl', () => {
+  test('detects viewer (/s/) URLs only', () => {
+    expect(utils.isViewerUrl('https://e-hentai.org/s/abc/123-4')).toBe(true);
+    expect(utils.isViewerUrl('https://exhentai.org/s/def/999-12')).toBe(true);
+    expect(utils.isViewerUrl('https://e-hentai.org/g/123/abc/')).toBe(false);
+    expect(utils.isViewerUrl(undefined as unknown as string)).toBe(false);
+    expect(utils.isViewerUrl(42 as unknown as string)).toBe(false);
+  });
 });
 
-test('getViewerPageFromUrl extracts the trailing page number', () => {
-  assert.equal(utils.getViewerPageFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7'), '7');
-  assert.equal(utils.getViewerPageFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7#x'), '7');
-  assert.equal(utils.getViewerPageFromUrl('https://e-hentai.org/g/3019721/abc/'), '');
-  assert.equal(utils.getViewerPageFromUrl(''), '');
+describe('getViewerPageFromUrl', () => {
+  test('extracts the trailing page number', () => {
+    expect(utils.getViewerPageFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7')).toBe('7');
+    expect(utils.getViewerPageFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7#x')).toBe('7');
+    expect(utils.getViewerPageFromUrl('https://e-hentai.org/g/3019721/abc/')).toBe('');
+    expect(utils.getViewerPageFromUrl('')).toBe('');
+  });
 });
 
-test('parsePagePair parses "current / total" labels', () => {
-  assert.deepEqual(utils.parsePagePair('3 / 40'), { current: '3', total: '40' });
-  assert.deepEqual(utils.parsePagePair('Page 12/345'), { current: '12', total: '345' });
-  assert.deepEqual(utils.parsePagePair('  7  /  7  '), { current: '7', total: '7' });
+describe('parsePagePair', () => {
+  test('parses "current / total" labels', () => {
+    expect(utils.parsePagePair('3 / 40')).toEqual({ current: '3', total: '40' });
+    expect(utils.parsePagePair('Page 12/345')).toEqual({ current: '12', total: '345' });
+    expect(utils.parsePagePair('  7  /  7  ')).toEqual({ current: '7', total: '7' });
+  });
+
+  test('rejects invalid or non-page text', () => {
+    expect(utils.parsePagePair('image_1280x720.jpg / something')).toBeNull();
+    expect(utils.parsePagePair('50 / 40')).toBeNull();
+    expect(utils.parsePagePair('0 / 40')).toBeNull();
+    expect(utils.parsePagePair('3 / 0')).toBeNull();
+    expect(utils.parsePagePair('no numbers here')).toBeNull();
+    expect(utils.parsePagePair('')).toBeNull();
+    expect(utils.parsePagePair(undefined as unknown as string)).toBeNull();
+  });
 });
 
-test('parsePagePair rejects invalid or non-page text', () => {
-  assert.equal(utils.parsePagePair('image_1280x720.jpg / something'), null);
-  assert.equal(utils.parsePagePair('50 / 40'), null); // current > total
-  assert.equal(utils.parsePagePair('0 / 40'), null); // zero current
-  assert.equal(utils.parsePagePair('3 / 0'), null); // zero total
-  assert.equal(utils.parsePagePair('no numbers here'), null);
-  assert.equal(utils.parsePagePair(''), null);
-  assert.equal(utils.parsePagePair(undefined), null);
+describe('getUrlTail', () => {
+  test('returns the last path segment', () => {
+    expect(utils.getUrlTail('https://e-hentai.org/s/abc/3019721-7')).toBe('3019721-7');
+    expect(utils.getUrlTail('https://e-hentai.org/s/abc/3019721-7#h')).toBe('3019721-7');
+    expect(utils.getUrlTail('')).toBe('');
+  });
 });
 
-test('getUrlTail returns the last path segment', () => {
-  assert.equal(utils.getUrlTail('https://e-hentai.org/s/abc/3019721-7'), '3019721-7');
-  assert.equal(utils.getUrlTail('https://e-hentai.org/s/abc/3019721-7#h'), '3019721-7');
-  assert.equal(utils.getUrlTail(''), '');
+describe('formatDuration', () => {
+  test('formats ms below 1s and seconds above', () => {
+    expect(utils.formatDuration(0)).toBe('0ms');
+    expect(utils.formatDuration(999)).toBe('999ms');
+    expect(utils.formatDuration(1000)).toBe('1.0s');
+    expect(utils.formatDuration(2500)).toBe('2.5s');
+  });
 });
 
-test('formatDuration formats ms below 1s and seconds above', () => {
-  assert.equal(utils.formatDuration(0), '0ms');
-  assert.equal(utils.formatDuration(999), '999ms');
-  assert.equal(utils.formatDuration(1000), '1.0s');
-  assert.equal(utils.formatDuration(2500), '2.5s');
-});
-
-test('normalizeSettings merges defaults and clamps invalid values', () => {
+describe('normalizeSettings', () => {
   const defaults = {
     preloadAheadCount: 2,
-    fitMode: 'height',
+    fitMode: 'height' as const,
     showStatus: true,
-    autoScroll: true
+    autoScroll: true,
+    overlayView: false,
+    spreadView: false,
+    spreadCoverAlone: true,
+    showPreloadThumbs: false
   };
 
-  assert.deepEqual(utils.normalizeSettings(undefined, defaults), defaults);
-  assert.deepEqual(utils.normalizeSettings({}, defaults), defaults);
+  test('merges defaults and clamps invalid values', () => {
+    expect(
+      utils.normalizeSettings(undefined as unknown as Record<string, unknown>, defaults)
+    ).toEqual(defaults);
+    expect(utils.normalizeSettings({}, defaults)).toEqual(defaults);
 
-  // valid overrides pass through
-  assert.equal(utils.normalizeSettings({ preloadAheadCount: 3 }, defaults).preloadAheadCount, 3);
-  assert.equal(utils.normalizeSettings({ fitMode: 'width' }, defaults).fitMode, 'width');
+    expect(utils.normalizeSettings({ preloadAheadCount: 3 }, defaults).preloadAheadCount).toBe(3);
+    expect(utils.normalizeSettings({ fitMode: 'width' }, defaults).fitMode).toBe('width');
 
-  // invalid values fall back to defaults
-  assert.equal(utils.normalizeSettings({ preloadAheadCount: 99 }, defaults).preloadAheadCount, 2);
-  assert.equal(utils.normalizeSettings({ fitMode: 'bogus' }, defaults).fitMode, 'height');
+    expect(utils.normalizeSettings({ preloadAheadCount: 99 }, defaults).preloadAheadCount).toBe(2);
+    expect(
+      utils.normalizeSettings({ fitMode: 'bogus' as unknown as 'height' }, defaults).fitMode
+    ).toBe('height');
 
-  // unrelated stored keys are preserved
-  assert.equal(utils.normalizeSettings({ showStatus: false }, defaults).showStatus, false);
-});
-
-test('getSpreadPageInfo with coverAlone=true shows page 1 alone', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(1, 40, true), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: true
+    expect(utils.normalizeSettings({ showStatus: false }, defaults).showStatus).toBe(false);
   });
 });
 
-test('getSpreadPageInfo with coverAlone=true pairs even pages as right', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(2, 40, true), {
-    partnerPage: 3,
-    pagesInSpread: 2,
-    isRightPage: true
+describe('getSpreadPageInfo', () => {
+  test('coverAlone=true shows page 1 alone', () => {
+    expect(utils.getSpreadPageInfo(1, 40, true)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: true
+    });
   });
-  assert.deepEqual(utils.getSpreadPageInfo(4, 40, true), {
-    partnerPage: 5,
-    pagesInSpread: 2,
-    isRightPage: true
+
+  test('coverAlone=true pairs even pages as right', () => {
+    expect(utils.getSpreadPageInfo(2, 40, true)).toEqual({
+      partnerPage: 3,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+    expect(utils.getSpreadPageInfo(4, 40, true)).toEqual({
+      partnerPage: 5,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+  });
+
+  test('coverAlone=true marks odd pages > 1 as left', () => {
+    expect(utils.getSpreadPageInfo(3, 40, true)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: false
+    });
+    expect(utils.getSpreadPageInfo(5, 40, true)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: false
+    });
+  });
+
+  test('coverAlone=false pairs odd pages as right', () => {
+    expect(utils.getSpreadPageInfo(1, 40, false)).toEqual({
+      partnerPage: 2,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+    expect(utils.getSpreadPageInfo(3, 40, false)).toEqual({
+      partnerPage: 4,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+  });
+
+  test('coverAlone=false marks even pages as left', () => {
+    expect(utils.getSpreadPageInfo(2, 40, false)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: false
+    });
+    expect(utils.getSpreadPageInfo(4, 40, false)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: false
+    });
+  });
+
+  test('returns single when partner exceeds total', () => {
+    expect(utils.getSpreadPageInfo(40, 40, true)).toEqual({
+      partnerPage: null,
+      pagesInSpread: 1,
+      isRightPage: true
+    });
+    expect(utils.getSpreadPageInfo(39, 40, false)).toEqual({
+      partnerPage: 40,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+  });
+
+  test('unknown total pairs right pages', () => {
+    expect(utils.getSpreadPageInfo(4, 0, true)).toEqual({
+      partnerPage: 5,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+    expect(utils.getSpreadPageInfo(1, 0, false)).toEqual({
+      partnerPage: 2,
+      pagesInSpread: 2,
+      isRightPage: true
+    });
+  });
+
+  test('handles invalid currentPage', () => {
+    const zero = utils.getSpreadPageInfo(0, 40, true);
+    expect(zero.partnerPage).toBeNull();
+    expect(zero.isRightPage).toBe(true);
+    const neg = utils.getSpreadPageInfo(-1, 40, false);
+    expect(neg.partnerPage).toBeNull();
+    expect(neg.isRightPage).toBe(true);
   });
 });
 
-test('getSpreadPageInfo with coverAlone=true marks odd pages > 1 as left', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(3, 40, true), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: false
+describe('getGalleryIdFromUrl', () => {
+  test('extracts the gallery ID', () => {
+    expect(utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7')).toBe(
+      '3019721'
+    );
+    expect(utils.getGalleryIdFromUrl('https://exhentai.org/s/abc123/999-12')).toBe('999');
+    expect(utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7#x')).toBe(
+      '3019721'
+    );
   });
-  assert.deepEqual(utils.getSpreadPageInfo(5, 40, true), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: false
-  });
-});
 
-test('getSpreadPageInfo with coverAlone=false pairs odd pages as right', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(1, 40, false), {
-    partnerPage: 2,
-    pagesInSpread: 2,
-    isRightPage: true
+  test('returns empty for non-viewer URLs', () => {
+    expect(utils.getGalleryIdFromUrl('https://e-hentai.org/g/3019721/abc/')).toBe('');
+    expect(utils.getGalleryIdFromUrl('')).toBe('');
+    expect(utils.getGalleryIdFromUrl(undefined as unknown as string)).toBe('');
   });
-  assert.deepEqual(utils.getSpreadPageInfo(3, 40, false), {
-    partnerPage: 4,
-    pagesInSpread: 2,
-    isRightPage: true
-  });
-});
-
-test('getSpreadPageInfo with coverAlone=false marks even pages as left', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(2, 40, false), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: false
-  });
-  assert.deepEqual(utils.getSpreadPageInfo(4, 40, false), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: false
-  });
-});
-
-test('getSpreadPageInfo returns single when partner exceeds total', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(40, 40, true), {
-    partnerPage: null,
-    pagesInSpread: 1,
-    isRightPage: true
-  });
-  assert.deepEqual(utils.getSpreadPageInfo(39, 40, false), {
-    partnerPage: 40,
-    pagesInSpread: 2,
-    isRightPage: true
-  });
-});
-
-test('getSpreadPageInfo with unknown total pairs right pages', () => {
-  assert.deepEqual(utils.getSpreadPageInfo(4, 0, true), {
-    partnerPage: 5,
-    pagesInSpread: 2,
-    isRightPage: true
-  });
-  assert.deepEqual(utils.getSpreadPageInfo(1, 0, false), {
-    partnerPage: 2,
-    pagesInSpread: 2,
-    isRightPage: true
-  });
-});
-
-test('getGalleryIdFromUrl extracts the gallery ID', () => {
-  assert.equal(utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7'), '3019721');
-  assert.equal(utils.getGalleryIdFromUrl('https://exhentai.org/s/abc123/999-12'), '999');
-  assert.equal(
-    utils.getGalleryIdFromUrl('https://e-hentai.org/s/c9bb9f7ae6/3019721-7#x'),
-    '3019721'
-  );
-});
-
-test('getGalleryIdFromUrl returns empty for non-viewer URLs', () => {
-  assert.equal(utils.getGalleryIdFromUrl('https://e-hentai.org/g/3019721/abc/'), '');
-  assert.equal(utils.getGalleryIdFromUrl(''), '');
-  assert.equal(utils.getGalleryIdFromUrl(undefined), '');
-});
-
-test('getSpreadPageInfo handles invalid currentPage', () => {
-  const zero = utils.getSpreadPageInfo(0, 40, true);
-  assert.equal(zero.partnerPage, null);
-  assert.equal(zero.isRightPage, true);
-  const neg = utils.getSpreadPageInfo(-1, 40, false);
-  assert.equal(neg.partnerPage, null);
-  assert.equal(neg.isRightPage, true);
 });
