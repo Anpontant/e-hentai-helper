@@ -8,7 +8,6 @@ on:
       - master
     paths:
       - addon/manifest.json
-      - src/**
       - package.json
       - package-lock.json
 
