@@ -30,6 +30,16 @@ export function SpreadOverlay() {
     exitOverlay();
   }
 
+  function handleRightError() {
+    if (state.rightFallbackSrc && state.rightSrc !== state.rightFallbackSrc) {
+      spreadState.value = {
+        ...spreadState.value,
+        rightSrc: state.rightFallbackSrc,
+        rightFallbackSrc: ''
+      };
+    }
+  }
+
   return (
     <div
       id="eh-helper-spread-overlay"
@@ -40,7 +50,11 @@ export function SpreadOverlay() {
         ×
       </button>
       <img id="eh-helper-spread-left" src={state.leftSrc || undefined} />
-      <img id="eh-helper-spread-right" src={state.rightSrc || undefined} />
+      <img
+        id="eh-helper-spread-right"
+        src={state.rightSrc || undefined}
+        onError={handleRightError}
+      />
     </div>
   );
 }

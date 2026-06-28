@@ -19,7 +19,8 @@ import {
   getTotalPageLabel,
   viewerDocCache,
   pageUrlMap,
-  pageImageMap
+  pageImageMap,
+  persistPageMaps
 } from './navigation.js';
 import { isOverlayActive, showStatus, showStatusLines } from './status.js';
 
@@ -199,6 +200,7 @@ function preloadAheadFrom(nextUrl, depth) {
   var startedAt = Date.now();
   var pageNum = parseInt(getViewerPageFromUrl(nextUrl), 10);
   if (pageNum) pageUrlMap[pageNum] = nextUrl;
+  persistPageMaps();
 
   setPreloadState(depth, {
     status: 'loading',
@@ -223,6 +225,7 @@ function preloadAheadFrom(nextUrl, depth) {
         var followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
         if (followingPage) pageUrlMap[followingPage] = followingUrl;
       }
+      persistPageMaps();
 
       return preloadImage(imageUrl).then(function () {
         if (runId !== preloadRunId) return '';

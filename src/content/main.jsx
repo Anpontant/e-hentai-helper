@@ -6,7 +6,7 @@ import { scrollToImage } from './scroll.js';
 import { isOverlayActive } from './status.js';
 import { schedulePreloadAfterCurrentImage, resetPreloadRootKey } from './preloader.js';
 import { renderSpread, updateSpreadVisibility, exitOverlay } from './spread.js';
-import { getCurrentKey, getMainImage } from './navigation.js';
+import { getCurrentKey, getMainImage, restorePageMaps } from './navigation.js';
 import { CHANGE_DEBOUNCE_MS } from '../shared/constants.js';
 import { App } from './components/App.jsx';
 import { effect } from '@preact/signals';
@@ -183,6 +183,7 @@ if (document.documentElement) {
   document.addEventListener('DOMContentLoaded', observeImageAndDomChanges, { once: true });
 }
 
+restorePageMaps();
 loadSettings().then(function () {
   handlePageStateChange();
 });

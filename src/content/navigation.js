@@ -2,6 +2,7 @@ import {
   normalizeUrl,
   isViewerUrl,
   getViewerPageFromUrl,
+  getGalleryIdFromUrl,
   parsePagePair,
   getUrlTail
 } from '../shared/viewer-utils.mjs';
@@ -145,4 +146,50 @@ export function fetchViewerDocument(pageUrl, signal) {
       pruneViewerDocCache();
       return doc;
     });
+}
+
+function getStorageKey() {
+  var galleryId = getGalleryIdFromUrl(location.href);
+  return galleryId ? 'eh-helper-maps-' + galleryId : '';
+}
+
+export function persistPageMaps() {
+  try {
+    var key = getStorageKey();
+    if (!key) return;
+    sessionStorage.setItem(key, JSON.stringify({ images: pageImageMap, urls: pageUrlMap }));
+  } catch (_e) {
+    // sessionStorage unavailable
+  }
+}
+
+export function restorePageMaps() {
+  try {
+    var key = getStorageKey();
+    if (!key) return;
+    var raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    var data = JSON.parse(raw);
+    if (data.images) {
+      Object.keys(data.images).forEach(function (k) {
+        if (!pageImageMap[k]) pageImageMap[k] = data.images[k];
+      });
+    }
+    if (data.urls) {
+      Object.keys(data.urls).forEach(function (k) {
+        if (!pageUrlMap[k]) pageUrlMap[k] = data.urls[k];
+      });
+    }
+  } catch (_e) {
+    // sessionStorage unavailable or corrupt
+  }
+}
+
+export function clearPageMapsStorage() {
+  try {
+    var key = getStorageKey();
+    if (key) sessionStorage.removeItem(key);
+  } catch (_e) {
+    // sessionStorage unavailable
+  }
 }

@@ -14,6 +14,11 @@ export function getViewerPageFromUrl(url) {
   return match ? match[1] : '';
 }
 
+export function getGalleryIdFromUrl(url) {
+  var match = normalizeUrl(url).match(/\/s\/[^/]+\/(\d+)-\d+/);
+  return match ? match[1] : '';
+}
+
 export function parsePagePair(text) {
   var normalized = String(text || '')
     .replace(/\s+/g, ' ')

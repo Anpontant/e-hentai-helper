@@ -9,7 +9,9 @@ import {
   fetchViewerDocument,
   viewerDocCache,
   pageUrlMap,
-  pageImageMap
+  pageImageMap,
+  persistPageMaps,
+  clearPageMapsStorage
 } from './navigation.js';
 import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
@@ -32,6 +34,7 @@ function loadPartnerImage(partnerPage, runId, callback) {
   }
 
   pageUrlMap[partnerPage] = partnerUrl;
+  persistPageMaps();
 
   fetchViewerDocument(partnerUrl)
     .then(function (doc) {
@@ -46,6 +49,7 @@ function loadPartnerImage(partnerPage, runId, callback) {
         var followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
         if (followingPage) pageUrlMap[followingPage] = followingUrl;
       }
+      persistPageMaps();
     })
     .catch(function () {
       if (runId !== spreadRenderRunId) return;
@@ -79,36 +83,54 @@ export function renderSpread(skipSnap) {
   }
 
   pageUrlMap[currentPage] = location.href;
-  if (mainImg.src) pageImageMap[currentPage] = mainImg.src;
+  if (mainImg.src && !pageImageMap[currentPage]) pageImageMap[currentPage] = mainImg.src;
+  persistPageMaps();
 
   spreadRenderRunId += 1;
   var runId = spreadRenderRunId;
 
-  var rightSrc = mainImg.src || '';
+  var cachedSrc = pageImageMap[currentPage];
+  var rightSrc = cachedSrc || mainImg.src || '';
+  var rightFallbackSrc = cachedSrc ? mainImg.src || '' : '';
 
   if (!mainImg.complete) {
     mainImg.addEventListener(
       'load',
       function () {
         if (runId !== spreadRenderRunId) return;
-        if (mainImg.src) pageImageMap[currentPage] = mainImg.src;
-        spreadState.value = {
-          ...spreadState.value,
-          rightSrc: mainImg.src || ''
-        };
+        if (!cachedSrc && mainImg.src) {
+          pageImageMap[currentPage] = mainImg.src;
+          persistPageMaps();
+          spreadState.value = {
+            ...spreadState.value,
+            rightSrc: mainImg.src || ''
+          };
+        }
       },
       { once: true }
     );
   }
 
   if (info.partnerPage) {
-    spreadState.value = { active: true, leftSrc: '', rightSrc: rightSrc, single: false };
+    spreadState.value = {
+      active: true,
+      leftSrc: '',
+      rightSrc: rightSrc,
+      rightFallbackSrc: rightFallbackSrc,
+      single: false
+    };
     loadPartnerImage(info.partnerPage, runId, function (src) {
       if (runId !== spreadRenderRunId) return;
       spreadState.value = { ...spreadState.value, leftSrc: src };
     });
   } else {
-    spreadState.value = { active: true, leftSrc: '', rightSrc: rightSrc, single: true };
+    spreadState.value = {
+      active: true,
+      leftSrc: '',
+      rightSrc: rightSrc,
+      rightFallbackSrc: rightFallbackSrc,
+      single: true
+    };
   }
 }
 
@@ -158,13 +180,20 @@ export function exitOverlay() {
   settings.value = { ...settings.value, overlayView: false, spreadView: false };
   browser.storage.local.set({ overlayView: false, spreadView: false });
   removeSpreadOverlayState();
+  clearPageMapsStorage();
   applyImageFit();
   scrollToImage();
 }
 
 function removeSpreadOverlayState() {
   spreadRenderRunId += 1;
-  spreadState.value = { active: false, leftSrc: '', rightSrc: '', single: false };
+  spreadState.value = {
+    active: false,
+    leftSrc: '',
+    rightSrc: '',
+    rightFallbackSrc: '',
+    single: false
+  };
 
   Object.keys(pageUrlMap).forEach(function (k) {
     delete pageUrlMap[k];
