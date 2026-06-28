@@ -1,5 +1,6 @@
 dist/
 node_modules/
+.claude/skills/
 package-lock.json
 *.xpi
 *.zip

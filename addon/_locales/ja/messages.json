@@ -47,7 +47,25 @@
   "popupFullscreenToggled": {
     "message": "全画面を切り替えました"
   },
+  "popupOverlay": {
+    "message": "オーバーレイ"
+  },
+  "popupOverlayView": {
+    "message": "オーバーレイ表示"
+  },
+  "popupSpreadView": {
+    "message": "見開き表示"
+  },
+  "popupSpreadCoverAlone": {
+    "message": "表紙単独"
+  },
+  "popupPreloadThumbs": {
+    "message": "先読みサムネイル"
+  },
   "popupVersion": {
     "message": "バージョン"
+  },
+  "menuSettingsLabel": {
+    "message": "設定"
   }
 }
