@@ -100,6 +100,26 @@ export function getNextPageUrl() {
   return getNextPageUrlFromDocument(document, location.href);
 }
 
+export function getPrevPageUrlFromDocument(doc, docUrl) {
+  var prevById = '';
+  var directPrev = doc.getElementById('prev');
+  if (directPrev && directPrev.href) prevById = directPrev.href;
+  if (!prevById) {
+    var prevContainer = doc.querySelector('#prev a');
+    if (prevContainer && prevContainer.href) prevById = prevContainer.href;
+  }
+
+  if (isViewerUrl(prevById) && normalizeUrl(prevById) !== normalizeUrl(docUrl)) {
+    return prevById;
+  }
+
+  return '';
+}
+
+export function getPrevPageUrl() {
+  return getPrevPageUrlFromDocument(document, location.href);
+}
+
 export function getImageUrlFromDocument(doc, docUrl) {
   var img = doc.getElementById('img');
   if (!img) return '';
@@ -183,6 +203,46 @@ export function restorePageMaps() {
   } catch (_e) {
     // sessionStorage unavailable or corrupt
   }
+}
+
+export function getGalleryBaseUrl() {
+  var i5 = document.getElementById('i5');
+  if (!i5) return '';
+  var link = i5.querySelector('a[href*="/g/"]');
+  return link ? link.href : '';
+}
+
+var galleryItemsPerPage = 20;
+
+export function fetchGalleryPageUrls(galleryBaseUrl, targetPage) {
+  var pageIndex = Math.floor((targetPage - 1) / galleryItemsPerPage);
+  var url = pageIndex > 0 ? galleryBaseUrl + '?p=' + pageIndex : galleryBaseUrl;
+
+  return fetch(url, { credentials: 'include', cache: 'force-cache' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('gallery fetch failed: ' + res.status);
+      return res.text();
+    })
+    .then(function (html) {
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var gdt = doc.getElementById('gdt');
+      if (!gdt) return;
+
+      var links = gdt.querySelectorAll('a[href*="/s/"]');
+      var count = 0;
+      for (var i = 0; i < links.length; i += 1) {
+        var href = links[i].href;
+        var page = parseInt(getViewerPageFromUrl(href), 10);
+        if (page && !pageUrlMap[page]) {
+          pageUrlMap[page] = href;
+          count += 1;
+        }
+      }
+      if (count > 0) {
+        if (links.length > galleryItemsPerPage) galleryItemsPerPage = links.length;
+        persistPageMaps();
+      }
+    });
 }
 
 export function clearPageMapsStorage() {

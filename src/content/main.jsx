@@ -5,7 +5,13 @@ import { updateFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
 import { isOverlayActive } from './status.js';
 import { schedulePreloadAfterCurrentImage, resetPreloadRootKey } from './preloader.js';
-import { renderSpread, updateSpreadVisibility, exitOverlay } from './spread.js';
+import {
+  renderSpread,
+  updateSpreadVisibility,
+  advanceSpread,
+  retreatSpread,
+  exitOverlay
+} from './spread.js';
 import { getCurrentKey, getMainImage, restorePageMaps } from './navigation.js';
 import { CHANGE_DEBOUNCE_MS } from '../shared/constants.js';
 import { App } from './components/App.jsx';
@@ -155,6 +161,17 @@ document.addEventListener('keydown', function (event) {
     if (isOverlayActive()) {
       event.preventDefault();
       exitOverlay();
+    }
+  }
+  if (isOverlayActive() && settings.value.spreadView) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      event.stopPropagation();
+      advanceSpread();
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      event.stopPropagation();
+      retreatSpread();
     }
   }
 });

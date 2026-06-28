@@ -4,6 +4,10 @@ import {
   getMainImage,
   getNextPageUrl,
   getNextPageUrlFromDocument,
+  getPrevPageUrl,
+  getPrevPageUrlFromDocument,
+  getGalleryBaseUrl,
+  fetchGalleryPageUrls,
   getImageUrlFromDocument,
   getTotalPageLabel,
   fetchViewerDocument,
@@ -134,6 +138,26 @@ export function renderSpread(skipSnap) {
   }
 }
 
+function navigateViaGalleryMap(targetPage, fallback) {
+  var galleryUrl = getGalleryBaseUrl();
+  if (!galleryUrl) {
+    fallback();
+    return;
+  }
+  fetchGalleryPageUrls(galleryUrl, targetPage)
+    .then(function () {
+      var url = pageUrlMap[targetPage];
+      if (url) {
+        location.href = url;
+      } else {
+        fallback();
+      }
+    })
+    .catch(function () {
+      fallback();
+    });
+}
+
 export function advanceSpread() {
   var s = settings.value;
   var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
@@ -150,30 +174,70 @@ export function advanceSpread() {
     return;
   }
 
-  if (info.pagesInSpread === 1) {
-    var nextUrl = getNextPageUrl();
-    if (nextUrl) location.href = nextUrl;
-    return;
-  }
+  navigateViaGalleryMap(targetPage, function () {
+    if (info.pagesInSpread === 1) {
+      var nextUrl = getNextPageUrl();
+      if (nextUrl) location.href = nextUrl;
+      return;
+    }
 
-  var partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
-  if (!partnerUrl) return;
+    var partnerUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
+    if (!partnerUrl) return;
 
-  var cached = viewerDocCache.get(partnerUrl);
-  if (cached) {
-    var target = getNextPageUrlFromDocument(cached, partnerUrl);
-    location.href = target || partnerUrl;
-    return;
-  }
-
-  fetchViewerDocument(partnerUrl)
-    .then(function (doc) {
-      var target = getNextPageUrlFromDocument(doc, partnerUrl);
+    var cached = viewerDocCache.get(partnerUrl);
+    if (cached) {
+      var target = getNextPageUrlFromDocument(cached, partnerUrl);
       location.href = target || partnerUrl;
-    })
-    .catch(function () {
-      location.href = partnerUrl;
-    });
+      return;
+    }
+
+    fetchViewerDocument(partnerUrl)
+      .then(function (doc) {
+        var target = getNextPageUrlFromDocument(doc, partnerUrl);
+        location.href = target || partnerUrl;
+      })
+      .catch(function () {
+        location.href = partnerUrl;
+      });
+  });
+}
+
+export function retreatSpread() {
+  var currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  var targetPage = Math.max(1, currentPage - 2);
+  if (targetPage >= currentPage) return;
+
+  var mapped = pageUrlMap[targetPage];
+  if (mapped) {
+    location.href = mapped;
+    return;
+  }
+
+  navigateViaGalleryMap(targetPage, function () {
+    var prevUrl = getPrevPageUrl();
+    if (!prevUrl) return;
+
+    if (currentPage - targetPage === 1) {
+      location.href = prevUrl;
+      return;
+    }
+
+    var cached = viewerDocCache.get(prevUrl);
+    if (cached) {
+      var target = getPrevPageUrlFromDocument(cached, prevUrl);
+      location.href = target || prevUrl;
+      return;
+    }
+
+    fetchViewerDocument(prevUrl)
+      .then(function (doc) {
+        var target = getPrevPageUrlFromDocument(doc, prevUrl);
+        location.href = target || prevUrl;
+      })
+      .catch(function () {
+        location.href = prevUrl;
+      });
+  });
 }
 
 export function exitOverlay() {
