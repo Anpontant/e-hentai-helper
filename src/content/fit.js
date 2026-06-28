@@ -5,54 +5,47 @@ function getHeadOrRoot() {
   return document.head || document.documentElement;
 }
 
-export function updateFitStyle() {
-  var parent = getHeadOrRoot();
-  if (!parent) return;
-
-  var styleEl = document.getElementById('eh-helper-fit-style');
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = 'eh-helper-fit-style';
-    parent.appendChild(styleEl);
-  }
-
-  var mode = settings.value.fitMode;
-
+function getFitProperties(mode) {
   if (mode === 'height') {
-    styleEl.textContent = [
-      '#img {',
-      'max-height: 100vh !important;',
-      'max-width: none !important;',
-      'width: auto !important;',
-      'height: auto !important;',
-      'object-fit: contain !important;',
-      '}'
-    ].join('\n');
-    return;
+    return { maxHeight: '100vh', maxWidth: 'none', objectFit: 'contain' };
   }
-
   if (mode === 'width') {
-    styleEl.textContent = [
-      '#img {',
-      'max-width: 100vw !important;',
-      'max-height: none !important;',
-      'width: auto !important;',
-      'height: auto !important;',
-      'object-fit: contain !important;',
-      '}'
-    ].join('\n');
-    return;
+    return { maxHeight: 'none', maxWidth: '100vw', objectFit: 'contain' };
   }
+  return { maxHeight: 'none', maxWidth: 'none', objectFit: 'fill' };
+}
 
-  styleEl.textContent = [
-    '#img {',
-    'max-height: none !important;',
-    'max-width: none !important;',
+function buildFitCss(selector, props) {
+  return [
+    selector + ' {',
+    'max-height: ' + props.maxHeight + ' !important;',
+    'max-width: ' + props.maxWidth + ' !important;',
     'width: auto !important;',
     'height: auto !important;',
-    'object-fit: fill !important;',
+    'object-fit: ' + props.objectFit + ' !important;',
     '}'
   ].join('\n');
+}
+
+function ensureStyleElement(id) {
+  var parent = getHeadOrRoot();
+  if (!parent) return null;
+
+  var styleEl = document.getElementById(id);
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = id;
+    parent.appendChild(styleEl);
+  }
+  return styleEl;
+}
+
+export function updateFitStyle() {
+  var styleEl = ensureStyleElement('eh-helper-fit-style');
+  if (!styleEl) return;
+
+  var props = getFitProperties(settings.value.fitMode);
+  styleEl.textContent = buildFitCss('#img', props);
 }
 
 export function applyImageFit() {
@@ -60,81 +53,23 @@ export function applyImageFit() {
   updateFitStyle();
   if (!img) return;
 
-  var mode = settings.value.fitMode;
-  img.style.setProperty('object-fit', 'contain', 'important');
-
-  if (mode === 'height') {
-    img.style.setProperty('max-height', '100vh', 'important');
-    img.style.setProperty('max-width', 'none', 'important');
-    img.style.setProperty('width', 'auto', 'important');
-    img.style.setProperty('height', 'auto', 'important');
-    return;
-  }
-
-  if (mode === 'width') {
-    img.style.setProperty('max-width', '100vw', 'important');
-    img.style.setProperty('max-height', 'none', 'important');
-    img.style.setProperty('width', 'auto', 'important');
-    img.style.setProperty('height', 'auto', 'important');
-    return;
-  }
-
-  img.style.setProperty('max-height', 'none', 'important');
-  img.style.setProperty('max-width', 'none', 'important');
+  var props = getFitProperties(settings.value.fitMode);
+  img.style.setProperty('max-height', props.maxHeight, 'important');
+  img.style.setProperty('max-width', props.maxWidth, 'important');
   img.style.setProperty('width', 'auto', 'important');
   img.style.setProperty('height', 'auto', 'important');
-  img.style.setProperty('object-fit', 'fill', 'important');
+  img.style.setProperty('object-fit', props.objectFit, 'important');
 }
 
 export function applySpreadFit(isSingle) {
-  var parent = getHeadOrRoot();
-  if (!parent) return;
+  var styleEl = ensureStyleElement('eh-helper-spread-fit-style');
+  if (!styleEl) return;
 
-  var styleEl = document.getElementById('eh-helper-spread-fit-style');
-  if (!styleEl) {
-    styleEl = document.createElement('style');
-    styleEl.id = 'eh-helper-spread-fit-style';
-    parent.appendChild(styleEl);
+  var props = getFitProperties(settings.value.fitMode);
+  if (props.maxWidth !== 'none') {
+    props = { ...props, maxWidth: isSingle ? '100vw' : '50vw' };
   }
-
-  var mode = settings.value.fitMode;
-  var maxW = isSingle ? '100vw' : '50vw';
-
-  if (mode === 'height') {
-    styleEl.textContent = [
-      '#eh-helper-spread-left, #eh-helper-spread-right {',
-      'max-height: 100vh !important;',
-      'max-width: ' + maxW + ' !important;',
-      'width: auto !important;',
-      'height: auto !important;',
-      'object-fit: contain !important;',
-      '}'
-    ].join('\n');
-    return;
-  }
-
-  if (mode === 'width') {
-    styleEl.textContent = [
-      '#eh-helper-spread-left, #eh-helper-spread-right {',
-      'max-width: ' + maxW + ' !important;',
-      'max-height: none !important;',
-      'width: auto !important;',
-      'height: auto !important;',
-      'object-fit: contain !important;',
-      '}'
-    ].join('\n');
-    return;
-  }
-
-  styleEl.textContent = [
-    '#eh-helper-spread-left, #eh-helper-spread-right {',
-    'max-height: none !important;',
-    'max-width: none !important;',
-    'width: auto !important;',
-    'height: auto !important;',
-    'object-fit: fill !important;',
-    '}'
-  ].join('\n');
+  styleEl.textContent = buildFitCss('#eh-helper-spread-left, #eh-helper-spread-right', props);
 }
 
 export function removeSpreadFitStyle() {
