@@ -3,74 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title data-i18n="extensionName">E-Hentai Helper</title>
+    <title>E-Hentai Helper</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <main class="popup">
-      <section class="group">
-        <div class="label" data-i18n="popupPreload">Preload</div>
-        <div class="segmented" data-setting="preloadAheadCount">
-          <button type="button" data-value="0" data-i18n="popupOff">Off</button>
-          <button type="button" data-value="1">+1</button>
-          <button type="button" data-value="2">+2</button>
-          <button type="button" data-value="3">+3</button>
-        </div>
-      </section>
-
-      <section class="group">
-        <div class="label" data-i18n="popupFit">Fit</div>
-        <div class="segmented" data-setting="fitMode">
-          <button type="button" data-value="height" data-i18n="popupHeight">Height</button>
-          <button type="button" data-value="width" data-i18n="popupWidth">Width</button>
-          <button type="button" data-value="original">1:1</button>
-        </div>
-      </section>
-
-      <section class="group">
-        <div class="label" data-i18n="popupOverlay">Overlay</div>
-        <div class="spread-checks">
-          <label>
-            <input type="checkbox" id="overlayView" />
-            <span data-i18n="popupOverlayView">Overlay view</span>
-          </label>
-          <label>
-            <input type="checkbox" id="spreadView" />
-            <span data-i18n="popupSpreadView">Spread view</span>
-          </label>
-          <label>
-            <input type="checkbox" id="spreadCoverAlone" />
-            <span data-i18n="popupSpreadCoverAlone">Cover alone</span>
-          </label>
-        </div>
-      </section>
-
-      <section class="checks">
-        <label>
-          <input type="checkbox" id="autoScroll" />
-          <span data-i18n="popupAutoScroll">Auto scroll</span>
-        </label>
-        <label>
-          <input type="checkbox" id="showStatus" />
-          <span data-i18n="popupStatus">Status</span>
-        </label>
-        <label>
-          <input type="checkbox" id="showPreloadThumbs" />
-          <span data-i18n="popupPreloadThumbs">Preload thumbs</span>
-        </label>
-      </section>
-
-      <section class="actions">
-        <button type="button" id="scrollToImage" data-i18n="popupScroll">Scroll</button>
-        <button type="button" id="fullscreen" data-i18n="popupFullscreen">Fullscreen</button>
-      </section>
-
-      <div class="hint" id="message"></div>
-      <footer class="version">
-        <span data-i18n="popupVersion">Version</span>
-        <span id="version"></span>
-      </footer>
-    </main>
+    <div id="popup-root"></div>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -2,14 +2,16 @@
   "name": "e-hentai-helper",
   "version": "0.3.0",
   "scripts": {
-    "addon:build": "npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
+    "build": "node scripts/build.mjs",
+    "build:prod": "node scripts/build.mjs --prod",
+    "addon:build": "npm run build && npx web-ext build --source-dir addon --artifacts-dir dist --overwrite-dest",
     "addon:dev": "dotenv -e .env -e .env.defaults -- npx web-ext run --source-dir addon --firefox-profile ./.web-ext-profile --profile-create-if-missing --keep-profile-changes",
     "addon:lint": "npx web-ext lint --source-dir addon --self-hosted",
     "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",
     "check": "npm run lint && npm run format:check && npm run test && npm run addon:lint && npm run addon:build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint addon/**/*.js scripts/**/*.mjs test/**/*.mjs",
+    "lint": "eslint src/**/*.js src/**/*.jsx scripts/**/*.mjs test/**/*.mjs",
     "test": "node --test",
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
@@ -17,9 +19,15 @@
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
+    "esbuild": "^0.28.1",
     "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
     "globals": "^17.7.0",
     "prettier": "^3.8.5",
     "web-ext": "^10.4.0"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.9.2",
+    "preact": "^10.29.3"
   }
 }

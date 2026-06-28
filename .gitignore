@@ -5,4 +5,9 @@ npm-debug.log*
 .envrc
 .direnv/
 .web-ext-profile/
-web-ext-artifacts/
+.playwright-cli/
+.playwright/
+
+# Built output (source lives in src/)
+addon/content/content.js
+addon/popup/popup.js

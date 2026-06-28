@@ -1,6 +1,9 @@
 dist/
 node_modules/
 .claude/skills/
+.playwright-cli/
+addon/content/content.js
+addon/popup/popup.js
 package-lock.json
 *.xpi
 *.zip
