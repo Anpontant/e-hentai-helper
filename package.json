@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.{ts,tsx} scripts/**/*.mjs test/**/*.ts",
-    "test": "tsx --test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "version:patch": "node scripts/bump-version.mjs patch",
     "version:minor": "node scripts/bump-version.mjs minor",
     "version:major": "node scripts/bump-version.mjs major"
@@ -29,9 +30,11 @@
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.7.0",
+    "happy-dom": "^20.10.6",
     "prettier": "^3.8.5",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
+    "vitest": "^4.1.9",
     "web-ext": "^10.4.0"
   },
   "dependencies": {

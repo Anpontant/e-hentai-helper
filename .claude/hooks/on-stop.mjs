@@ -17,17 +17,18 @@ const status = spawnSync('git', ['status', '--porcelain', '--', 'src', 'test', '
 });
 if (status.error || !status.stdout || status.stdout.trim() === '') process.exit(0);
 
-const run = spawnSync(process.execPath, ['--test'], {
+const run = spawnSync('npx', ['vitest', 'run'], {
   encoding: 'utf8',
-  env: { ...process.env, E_HENTAI_HELPER_ON_STOP: '1' }
+  env: { ...process.env, E_HENTAI_HELPER_ON_STOP: '1' },
+  shell: true
 });
 const out = `${run.stdout ?? ''}${run.stderr ?? ''}`.trim();
 
 if (run.status === 0) {
-  process.stdout.write(JSON.stringify({ systemMessage: '✓ node --test passed' }));
+  process.stdout.write(JSON.stringify({ systemMessage: '✓ vitest passed' }));
 } else {
   const tail = out.split('\n').slice(-40).join('\n');
-  process.stdout.write(JSON.stringify({ systemMessage: `✗ node --test failed:\n${tail}` }));
+  process.stdout.write(JSON.stringify({ systemMessage: `✗ vitest failed:\n${tail}` }));
 }
 process.exit(0);
 
