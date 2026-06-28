@@ -8,6 +8,7 @@ on:
       - master
     paths:
       - addon/**
+      - src/**
       - scripts/**
       - tools/**
       - package.json
