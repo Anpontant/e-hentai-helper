@@ -82,3 +82,98 @@ test('normalizeSettings merges defaults and clamps invalid values', () => {
   // unrelated stored keys are preserved
   assert.equal(utils.normalizeSettings({ showStatus: false }, defaults).showStatus, false);
 });
+
+test('getSpreadPageInfo with coverAlone=true shows page 1 alone', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(1, 40, true), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: true
+  });
+});
+
+test('getSpreadPageInfo with coverAlone=true pairs even pages as right', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(2, 40, true), {
+    partnerPage: 3,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(4, 40, true), {
+    partnerPage: 5,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+});
+
+test('getSpreadPageInfo with coverAlone=true marks odd pages > 1 as left', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(3, 40, true), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: false
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(5, 40, true), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: false
+  });
+});
+
+test('getSpreadPageInfo with coverAlone=false pairs odd pages as right', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(1, 40, false), {
+    partnerPage: 2,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(3, 40, false), {
+    partnerPage: 4,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+});
+
+test('getSpreadPageInfo with coverAlone=false marks even pages as left', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(2, 40, false), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: false
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(4, 40, false), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: false
+  });
+});
+
+test('getSpreadPageInfo returns single when partner exceeds total', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(40, 40, true), {
+    partnerPage: null,
+    pagesInSpread: 1,
+    isRightPage: true
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(39, 40, false), {
+    partnerPage: 40,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+});
+
+test('getSpreadPageInfo with unknown total pairs right pages', () => {
+  assert.deepEqual(utils.getSpreadPageInfo(4, 0, true), {
+    partnerPage: 5,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+  assert.deepEqual(utils.getSpreadPageInfo(1, 0, false), {
+    partnerPage: 2,
+    pagesInSpread: 2,
+    isRightPage: true
+  });
+});
+
+test('getSpreadPageInfo handles invalid currentPage', () => {
+  const zero = utils.getSpreadPageInfo(0, 40, true);
+  assert.equal(zero.partnerPage, null);
+  assert.equal(zero.isRightPage, true);
+  const neg = utils.getSpreadPageInfo(-1, 40, false);
+  assert.equal(neg.partnerPage, null);
+  assert.equal(neg.isRightPage, true);
+});

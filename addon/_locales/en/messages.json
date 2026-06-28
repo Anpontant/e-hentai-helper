@@ -47,7 +47,25 @@
   "popupFullscreenToggled": {
     "message": "Fullscreen toggled"
   },
+  "popupOverlay": {
+    "message": "Overlay"
+  },
+  "popupOverlayView": {
+    "message": "Overlay view"
+  },
+  "popupSpreadView": {
+    "message": "Spread view"
+  },
+  "popupSpreadCoverAlone": {
+    "message": "Cover alone"
+  },
+  "popupPreloadThumbs": {
+    "message": "Preload thumbs"
+  },
   "popupVersion": {
     "message": "Version"
+  },
+  "menuSettingsLabel": {
+    "message": "Settings"
   }
 }

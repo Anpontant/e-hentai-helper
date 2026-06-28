@@ -5,7 +5,11 @@
     preloadAheadCount: 2,
     fitMode: 'height',
     showStatus: true,
-    autoScroll: true
+    autoScroll: true,
+    overlayView: false,
+    spreadView: false,
+    spreadCoverAlone: true,
+    showPreloadThumbs: false
   };
 
   function setMessage(text) {
@@ -72,6 +76,10 @@
     updateSegmented('fitMode', settings.fitMode);
     document.getElementById('autoScroll').checked = Boolean(settings.autoScroll);
     document.getElementById('showStatus').checked = Boolean(settings.showStatus);
+    document.getElementById('overlayView').checked = Boolean(settings.overlayView);
+    document.getElementById('spreadView').checked = Boolean(settings.spreadView);
+    document.getElementById('spreadCoverAlone').checked = Boolean(settings.spreadCoverAlone);
+    document.getElementById('showPreloadThumbs').checked = Boolean(settings.showPreloadThumbs);
   }
 
   function savePatch(patch) {
@@ -121,6 +129,10 @@
     setupSegmented('fitMode');
     setupCheckbox('autoScroll', 'autoScroll');
     setupCheckbox('showStatus', 'showStatus');
+    setupCheckbox('overlayView', 'overlayView');
+    setupCheckbox('spreadView', 'spreadView');
+    setupCheckbox('spreadCoverAlone', 'spreadCoverAlone');
+    setupCheckbox('showPreloadThumbs', 'showPreloadThumbs');
 
     document.getElementById('scrollToImage').addEventListener('click', function () {
       sendToContent('scroll-to-image').then(function () {

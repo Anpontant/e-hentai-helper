@@ -57,6 +57,34 @@
     return (ms / 1000).toFixed(1) + 's';
   }
 
+  function getSpreadPageInfo(currentPage, totalPages, coverAlone) {
+    if (currentPage < 1) {
+      return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
+    }
+
+    var isRightPage;
+    if (coverAlone) {
+      if (currentPage === 1) {
+        return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
+      }
+      // coverAlone: even pages are right/anchor ([2|3], [4|5], ...)
+      isRightPage = currentPage % 2 === 0;
+    } else {
+      // paired cover: odd pages are right/anchor ([1|2], [3|4], ...)
+      isRightPage = currentPage % 2 === 1;
+    }
+
+    if (!isRightPage) {
+      return { partnerPage: null, pagesInSpread: 1, isRightPage: false };
+    }
+
+    var partner = currentPage + 1;
+    if (totalPages > 0 && partner > totalPages) {
+      return { partnerPage: null, pagesInSpread: 1, isRightPage: true };
+    }
+    return { partnerPage: partner, pagesInSpread: 2, isRightPage: true };
+  }
+
   function normalizeSettings(stored, defaults) {
     var settings = Object.assign({}, defaults, stored || {});
     if (PRELOAD_OPTIONS.indexOf(settings.preloadAheadCount) === -1) {
@@ -77,6 +105,7 @@
     parsePagePair: parsePagePair,
     getUrlTail: getUrlTail,
     formatDuration: formatDuration,
+    getSpreadPageInfo: getSpreadPageInfo,
     normalizeSettings: normalizeSettings
   };
 });
