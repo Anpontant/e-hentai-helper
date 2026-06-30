@@ -261,6 +261,7 @@ git commit -m "refactor: extract resolvePageData and reuse in spread view"
 **Files:**
 
 - Modify: `src/content/preloader.ts`（ファイル全体を置き換え）
+- Modify: `src/content/navigation.ts`（`fetchGalleryPageUrls` に任意 `signal` 引数を追加）
 - Modify: `src/content/spread.ts`（`removeSpreadOverlayState` に `resetPreloadCache()` 呼び出しを追加）
 - Modify: `addon/content/content.css`（`.eh-helper-preload-frame` ルール削除）
 
@@ -274,7 +275,10 @@ git commit -m "refactor: extract resolvePageData and reuse in spread view"
 - **先読み済み追跡 `preloadedPages: Set<number>` はセッション永続**（advance/seek をまたいで保持）。`preloadNext` ではリセットせず、teardown の `resetPreloadCache()` でのみクリア → 重複窓でスキップが効く。
 - **窓・サムネ状態 `windowImages` / `currentWindowPages` は `preloadNext` ごとにリセット**（`resetWindowState()`）。
 - **`ensureWindowUrls` は窓内の未取得 URL が揃うまで（進捗ある限り）一覧ページを追加 fetch** → 一覧ページ境界（既定20件区切り）をまたぐ窓で後半が `failed` になるのを防ぐ。
-- **`preloadImage(page, url, runId)` は `onload` 時に `runId === preloadRunId` を確認してから保存** → `Image` ロードは abort できないため、古い run の完了がキャッシュを汚染しない。
+- **`preloadImage(page, url, runId)` は `settled` フラグで load/error/timeout の最初の結果のみ採用**し、`onload`（最初に確定した場合）かつ `runId === preloadRunId` のときだけ保存 → `Image` ロードは abort できないため、タイムアウト後の遅延 onload が「failed なのに cache」状態を作るのを防ぐ。
+- **cache hit 経路でもサムネを補完**: `preloadedPages.has(page)` のとき、`showPreloadThumbs` が ON なら `pageImageMap[page]` から（キャッシュ供給の）Image を作り `windowImages` に入れる → 重複窓でサムネが欠落しない。サムネ更新は既存どおり `showStatus` 経由の `updatePreloadStatus` に従う。
+- **gallery fetch も abort 対象**: `ensureWindowUrls` は `fetchGalleryPageUrls(..., signal)` に現在の `preloadAbortController.signal` を渡す（`fetchGalleryPageUrls` に任意 `signal` 引数を追加）。
+- **並列起動は `Promise.all` で束ねる**: `preloadPagesAhead` は `prefetchOnePage` の Promise を保持（将来の完了監視のため）。呼び出し側 `preloadNext` は `void` で意図的に fire-and-forget。
 - 削除: `preloadAheadFrom`, `preloadByHiddenFrame`, `removeOldPreloadFrames`（`resetWindowState` / `resetPreloadCache` に置換）。
 
 - [ ] **Step 1: preloader.ts をまるごと置き換え**
@@ -396,11 +400,19 @@ function setPreloadState(depth: number, patch: Partial<PreloadStateEntry>) {
 function preloadImage(page: number, imageUrl: string, runId: number) {
   return new Promise<void>(function (resolve, reject) {
     const image = new Image();
+    // Only the first of load/error/timeout takes effect. Without this, a late
+    // onload after a timeout would still mark the page warm (status failed but
+    // later reported as cache).
+    let settled = false;
     const timeout = window.setTimeout(function () {
+      if (settled) return;
+      settled = true;
       reject(new Error('image preload timeout'));
     }, IMAGE_PRELOAD_TIMEOUT_MS);
 
     image.onload = function () {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeout);
       if (runId === preloadRunId) {
         preloadedPages.add(page);
@@ -409,6 +421,8 @@ function preloadImage(page: number, imageUrl: string, runId: number) {
       resolve();
     };
     image.onerror = function () {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeout);
       reject(new Error('image preload failed'));
     };
@@ -439,6 +453,16 @@ function prefetchOnePage(page: number, depth: number, runId: number) {
   if (runId !== preloadRunId) return Promise.resolve();
 
   if (preloadedPages.has(page)) {
+    // Reconstruct the thumb (off by default) for already-warm pages so the strip
+    // stays complete across overlapping windows. The Image is served from cache.
+    if (settings.value.showPreloadThumbs && !windowImages.has(page)) {
+      const cachedUrl = pageImageMap[page];
+      if (cachedUrl) {
+        const thumb = new Image();
+        thumb.src = cachedUrl;
+        windowImages.set(page, thumb);
+      }
+    }
     setPreloadState(depth, { status: 'loaded', page: String(page), duration: 0, method: 'cache' });
     return Promise.resolve();
   }
@@ -495,7 +519,8 @@ function ensureWindowUrls(pages: number[], runId: number): Promise<void> {
     });
     if (!missing.length) return Promise.resolve();
     const before = missing.length;
-    return fetchGalleryPageUrls(galleryUrl, missing[0])
+    const signal = preloadAbortController ? preloadAbortController.signal : undefined;
+    return fetchGalleryPageUrls(galleryUrl, missing[0], signal)
       .catch(function () {})
       .then(function () {
         if (runId !== preloadRunId) return;
@@ -513,9 +538,13 @@ function ensureWindowUrls(pages: number[], runId: number): Promise<void> {
 function preloadPagesAhead(pages: number[], runId: number) {
   return ensureWindowUrls(pages, runId).then(function () {
     if (runId !== preloadRunId) return;
-    pages.forEach(function (page, index) {
-      prefetchOnePage(page, index + 1, runId);
-    });
+    // prefetchOnePage never rejects (handles its own errors). Promise.all ties
+    // the per-page lifetimes to this promise for future observability.
+    return Promise.all(
+      pages.map(function (page, index) {
+        return prefetchOnePage(page, index + 1, runId);
+      })
+    );
   });
 }
 
@@ -551,7 +580,8 @@ export function preloadNext() {
     settings.value.preloadAheadCount
   );
   currentWindowPages = pages;
-  preloadPagesAhead(pages, runId);
+  // Fire-and-forget; per-page errors are handled inside prefetchOnePage.
+  void preloadPagesAhead(pages, runId);
 }
 
 export function schedulePreloadAfterCurrentImage() {
@@ -571,12 +601,30 @@ export function schedulePreloadAfterCurrentImage() {
 }
 ```
 
-- [ ] **Step 2: ビルドで型エラーが無いことを確認**
+- [ ] **Step 2: `fetchGalleryPageUrls` に任意 `signal` 引数を追加**
+
+`src/content/navigation.ts` の `fetchGalleryPageUrls` のシグネチャと `fetch` 呼び出しに `signal` を通す（既存呼び出し側 `spread.ts:resolvePageImage` は引数省略のままで互換）。冒頭2行を次に変更:
+
+```ts
+export function fetchGalleryPageUrls(
+  galleryBaseUrl: string,
+  targetPage: number,
+  signal?: AbortSignal
+) {
+  const pageIndex = Math.floor((targetPage - 1) / galleryItemsPerPage);
+  const url = pageIndex > 0 ? galleryBaseUrl + '?p=' + pageIndex : galleryBaseUrl;
+
+  return fetch(url, { credentials: 'include', cache: 'force-cache', signal: signal })
+```
+
+（`fetch(url, { credentials: 'include', cache: 'force-cache' })` の行を上記の `signal` 付きに置き換える。以降の `.then(...)` は変更不要。）
+
+- [ ] **Step 3: ビルドで型エラーが無いことを確認**
 
 Run: `npm run build`
-Expected: 成功（`resetPreloadCache` がコンパイル・export される）
+Expected: 成功（`resetPreloadCache` が export され、`fetchGalleryPageUrls(..., signal)` の 3 引数呼び出しが型エラーにならない）
 
-- [ ] **Step 3: spread.ts の teardown に `resetPreloadCache()` を配線**
+- [ ] **Step 4: spread.ts の teardown に `resetPreloadCache()` を配線**
 
 `src/content/spread.ts` の preloader import を更新（`resetPreloadCache` 追加）:
 
@@ -590,21 +638,21 @@ import { schedulePreloadAfterCurrentImage, resetPreloadCache } from './preloader
 resetPreloadCache();
 ```
 
-- [ ] **Step 4: dead な CSS ルールを削除**
+- [ ] **Step 5: dead な CSS ルールを削除**
 
 `addon/content/content.css` の `.eh-helper-preload-frame { ... }` ブロック（前後の空行も含めて）を削除する。iframe フォールバック撤去によりこのクラスを使う要素が無くなるため。
 
-- [ ] **Step 5: ビルドと lint で未使用 import / 型エラーが無いことを確認**
+- [ ] **Step 6: ビルドと lint で未使用 import / 型エラーが無いことを確認**
 
 Run: `npm run build && npm run lint`
 Expected: 成功。`preloader.ts` に未使用 import が残っていないこと（`viewerDocCache` / `getNextPageUrl` 等は import していない）。`spread.ts` の `resetPreloadCache` import が使われていること。
 
-- [ ] **Step 6: 品質ゲートを通す**
+- [ ] **Step 7: 品質ゲートを通す**
 
 Run: `npm run check`
 Expected: lint / format:check / test / addon:lint / addon:build すべて成功
 
-- [ ] **Step 7: 手動確認（オーバーレイ並列先読み）**
+- [ ] **Step 8: 手動確認（オーバーレイ並列先読み）**
 
 `addon/` を Firefox に読み込み（`npm run addon:dev` 等）、ギャラリーをビューア（`/s/`）で開く。
 
@@ -618,10 +666,10 @@ Expected: lint / format:check / test / addon:lint / addon:build すべて成功
 
 Expected: 並列先読み・スキップ・境界またぎ・中断耐性が機能し、通常モードでは先読みが発生しない。
 
-- [ ] **Step 8: コミット**
+- [ ] **Step 9: コミット**
 
 ```bash
-git add src/content/preloader.ts src/content/spread.ts addon/content/content.css
+git add src/content/preloader.ts src/content/navigation.ts src/content/spread.ts addon/content/content.css
 git commit -m "perf: parallelize overlay preload and drop ineffective normal-mode preload"
 ```
 
@@ -669,7 +717,10 @@ git commit -m "chore: bump version to 0.8.3"
 - iframe 廃止に伴う関数簡素化（`resetWindowState`）と CSS 削除 → Task 3 ✓
 - バイトキャッシュのセッション永続（`preloadedPages: Set`）＋窓・サムネ分離（`windowImages`）→ Task 3 ✓
 - ギャラリー境界またぎの URL 確保（`ensureWindowUrls` ループ）→ Task 3 ✓
-- abort 耐性（`preloadImage` の `onload` runId ガード）→ Task 3 ✓
+- abort 耐性（`preloadImage` の `settled` フラグ＋`onload` runId ガード）→ Task 3 ✓
+- cache hit 時のサムネ補完（`windowImages` 再構築）→ Task 3 ✓
+- gallery fetch の abort（`fetchGalleryPageUrls(..., signal)`）→ Task 3 Step 2 ✓
+- 並列起動の Promise 保持（`Promise.all` ＋ 呼び出し側 `void`）→ Task 3 ✓
 - teardown クリア（`resetPreloadCache` を `removeSpreadOverlayState` から呼ぶ）→ Task 3 ✓
 - `preloadNext` のオーバーレイ分岐統合＋非オーバーレイ早期 return → Task 3 ✓
 - 中断制御（`preloadRunId` / `preloadAbortController`）維持 → Task 3 ✓
@@ -685,5 +736,6 @@ git commit -m "chore: bump version to 0.8.3"
 - `preloadedPages: Set<number>`（`const`、`.has` / `.add` / `.clear` のみ）— 再代入なし ✓
 - `windowImages: Map<number, HTMLImageElement>`（`let`、`resetWindowState` で再代入、`.get` / `.set`）✓
 - `preloadImage(page, imageUrl, runId)` — 3引数で一貫（`prefetchOnePage` の2か所の呼び出しと一致）✓
+- `fetchGalleryPageUrls(galleryBaseUrl, targetPage, signal?)` — Task 3 Step 2 で任意 `signal` 追加。既存呼び出し（`spread.ts:resolvePageImage` の2引数）と後方互換、`ensureWindowUrls` は3引数で呼ぶ ✓
 - `preloadThumbs: Signal<HTMLImageElement[]>`（既存）に `HTMLImageElement[]` を代入 — `PreloadThumbs.tsx` の `img.src` 利用と整合 ✓
-- preloader エクスポート（`abortActivePreload` / `resetPreloadRootKey` / `preloadNext` / `schedulePreloadAfterCurrentImage`）はシグネチャ不変。新規 `resetPreloadCache()` は `spread.ts` から呼ぶ（Task 3 Step 3 で import 追加）✓
+- preloader エクスポート（`abortActivePreload` / `resetPreloadRootKey` / `preloadNext` / `schedulePreloadAfterCurrentImage`）はシグネチャ不変。新規 `resetPreloadCache()` は `spread.ts` から呼ぶ（Task 3 Step 4 で import 追加）✓
