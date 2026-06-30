@@ -26,6 +26,10 @@
   （左=次 / 右=前 の向きは現状維持）。
 - シークバー: **ドラッグ＆トラッククリックでジャンプ**。見開きモードでは見開き単位に
   スナップ。バー右隣に「現在 / 総ページ」を表示。
+- シークバーの向きは**右開き（RTL）**に合わせる: バーの**右端 = 1 ページ目**、
+  **左端 = 最終ページ**。ポインタ位置からのページ算出は左基準フラクションを反転し
+  （`pageFromSeekFraction(1 - leftFraction, total)`）、サムは `left: (1 - frac)`、
+  進捗フィルは右アンカー（CSS `right: 0`、`width: frac`）とする。
 
 ## アーキテクチャ
 
@@ -92,16 +96,22 @@
 #### シークバー（下部）
 
 - 構造: トラック（`<div>`）＋ 進捗フィル ＋ サム ＋ カウンタ「現在 / 総」。
+  向きは RTL（右端 = 1 ページ目）。
 - 表示ページ `displayPage = seekPreview.value ?? virtualPage.value`。
-  サム/フィル位置 = `seekFractionFromPage(displayPage, totalPages.value)`。
+  `frac = seekFractionFromPage(displayPage, totalPages.value)`（1 関数呼び出しに集約）。
+  フィル = 右アンカーで `width: frac`、サム = `left: (1 - frac)`。
 - Pointer Events:
-  - `onPointerDown`: `setPointerCapture`、`fraction = (clientX - trackLeft) / trackWidth`、
-    `seekPreview.value = pageFromSeekFraction(fraction, totalPages.value)`。
+  - `onPointerDown`: `setPointerCapture`、`leftFraction = (clientX - trackLeft) / trackWidth`、
+    `seekPreview.value = pageFromSeekFraction(1 - leftFraction, totalPages.value)`（RTL 反転）。
   - `onPointerMove`（ドラッグ中のみ）: `seekPreview` を更新。
   - `onPointerUp`: `seekToPage(seekPreview.value)` を一度だけ実行し、`seekPreview.value = null`。
     （ドラッグ中は画像を読み込まず、確定時のみジャンプ＝負荷軽減）
+  - コントロール非表示時（中央タップ / Escape / オーバーレイ終了）に `seekPreview` を
+    リアクティブにリセット（ドラッグ中断時の残留を防ぐ）。
 - `totalPages <= 0` のとき: トラックは無効（pointer 操作を受け付けない）、カウンタは
   現在ページのみ（総ページは `-`）。
+- コントロールバー内のクリック/タッチは `closest('#eh-helper-spread-controls')` でゾーン
+  クリックへ伝播させない（タッチ端末でのページ送り誤爆を防止）。
 
 ### `src/content/components/Menu.tsx`
 
