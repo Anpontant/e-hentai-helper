@@ -174,6 +174,11 @@ export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
     });
 }
 
+// Fetch a viewer page and cache-fill the page maps (image URL + the following
+// page's URL), persisting them. These map writes are unconditional cache fills
+// keyed by real page numbers (always-valid data), so callers that care about
+// render staleness guard their own display updates — e.g. the spreadRenderRunId
+// check around the callback in loadPartnerImage — not these writes.
 export function resolvePageData(
   url: string,
   signal?: AbortSignal

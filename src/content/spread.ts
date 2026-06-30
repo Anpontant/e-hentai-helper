@@ -47,6 +47,7 @@ function loadPartnerImage(partnerPage: number, runId: number, callback: (src: st
       if (runId !== spreadRenderRunId) return;
       if (data.imageUrl) {
         pageImageMap[partnerPage] = data.imageUrl;
+        persistPageMaps();
         callback(data.imageUrl);
       }
     })
