@@ -92,6 +92,29 @@ export function resolveSpreadPage(
   return { rightPage: rightPage, info: getSpreadPageInfo(rightPage, total, coverAlone) };
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function getOverlayClickZone(fraction: number): 'next' | 'menu' | 'prev' {
+  const f = clamp(fraction, 0, 1);
+  if (f < 0.4) return 'next';
+  if (f > 0.6) return 'prev';
+  return 'menu';
+}
+
+export function pageFromSeekFraction(fraction: number, total: number): number {
+  if (total <= 0) return 1;
+  const f = clamp(fraction, 0, 1);
+  const page = Math.round(f * (total - 1)) + 1;
+  return clamp(page, 1, total);
+}
+
+export function seekFractionFromPage(page: number, total: number): number {
+  if (total <= 1) return 0;
+  return clamp((page - 1) / (total - 1), 0, 1);
+}
+
 export function normalizeSettings(stored: Partial<Settings>, defaults: Settings): Settings {
   const settings = Object.assign({}, defaults, stored || {});
   settings.preloadAheadCount = Math.max(
