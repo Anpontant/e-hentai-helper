@@ -92,6 +92,23 @@ export function resolveSpreadPage(
   return { rightPage: rightPage, info: getSpreadPageInfo(rightPage, total, coverAlone) };
 }
 
+export function getPreloadWindowPages(
+  currentPage: number,
+  pagesInSpread: number,
+  total: number,
+  count: number
+): number[] {
+  const pages: number[] = [];
+  const start = currentPage + pagesInSpread;
+  for (let i = 0; i < count; i += 1) {
+    const page = start + i;
+    if (page < 1) continue;
+    if (total > 0 && page > total) break;
+    pages.push(page);
+  }
+  return pages;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
