@@ -1,109 +1,174 @@
-# Repository Instructions
+# CLAUDE.md
 
-This file is the single source of agent/AI instructions for this repository.
-`CLAUDE.md` is a symlink to this file.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project shape
+このファイルはリポジトリ内の AI エージェント向け指示の唯一の情報源である。
+`CLAUDE.md` はこのファイルへの symlink。
 
-Firefox MV3 extension. Source is authored in `src/` and bundled by esbuild into
-`addon/` for the browser to load.
+## プロジェクト構成
+
+Firefox MV3 拡張機能。ソースは `src/` に TypeScript / TSX で記述し、esbuild で
+`addon/` にバンドルしてブラウザに読み込ませる。
 
 ```
 src/
-  shared/          Pure helpers and constants (shared with tests)
-  content/         Content script — modules + Preact components (.jsx)
-  popup/           Popup UI — Preact entry point (.jsx)
+  background/        バックグラウンドスクリプト (.ts)
+  content/           コンテンツスクリプト — モジュール + Preact コンポーネント (.ts/.tsx)
+  popup/             ポップアップ UI — Preact エントリポイント (.ts)
+  shared/            純粋なヘルパーと定数 (テストと共有)
+  types/             型定義 (.d.ts)
 addon/
-  manifest.json    Extension manifest (hand-edited)
-  content/         content.css (hand-edited), content.js (built — gitignored)
-  popup/           popup.html, popup.css (hand-edited), popup.js (built — gitignored)
+  manifest.json      拡張機能マニフェスト (手動編集)
+  background/        background.js (ビルド出力 — gitignored)
+  content/           content.css (手動編集), content.js (ビルド出力 — gitignored)
+  popup/             popup.html, popup.css (手動編集), popup.js (ビルド出力 — gitignored)
   icons/, _locales/
+test/
+  helpers/           テストヘルパー (browser-mock 等)
+  *.test.ts          Vitest テストファイル
 scripts/
-  build.mjs        esbuild bundler config
+  build.mjs          esbuild バンドラー設定
+  bump-version.mjs   バージョン更新スクリプト
 ```
 
-### Tech stack
+### 技術スタック
 
-- **Bundler:** esbuild — `npm run build` bundles `src/` → `addon/`
-- **UI framework:** Preact + @preact/signals for reactive state
-- **JSX:** automatic runtime via esbuild (`jsxImportSource: 'preact'`)
-- **Linting:** ESLint 8 + eslint-plugin-react (JSX support)
-- **Formatting:** Prettier
-- **Addon tooling:** web-ext (lint, build, sign, dev)
+UI/状態管理に Preact + @preact/signals、バンドルに esbuild、テストに Vitest + happy-dom。
+バージョン・ツール詳細は `package.json`。非自明な点だけ: `tsc` は型チェック専用 (`noEmit`)
+でバンドルはしない (esbuild が担う)、JSX は automatic runtime (`jsxImportSource: 'preact'`)。
 
-### Key conventions
+### 主要な規約
 
-- Edit source in `src/`, never edit `addon/content/content.js` or
-  `addon/popup/popup.js` directly — they are build output (gitignored).
-- Static assets in `addon/` (manifest.json, CSS, HTML, icons, \_locales) are
-  hand-edited as usual.
+- ソースの編集は `src/` 内で行う。`addon/content/content.js`、
+  `addon/popup/popup.js`、`addon/background/background.js` は
+  ビルド出力なので直接編集しない (gitignored)。
+- `addon/` 内の静的アセット (manifest.json, CSS, HTML, icons, \_locales) は
+  手動編集する。
 
-## Quality gate
+## アーキテクチャ
 
-Before committing any change to code, scripts, tooling, or docs, run:
+拡張機能は 3 つの独立したエントリポイントから成る:
+
+### Background (`src/background/main.ts`)
+
+exhentai.org → e-hentai.org のリダイレクト処理のみ。`webRequest.onBeforeRequest`
+(blocking) で `igneous` cookie を確認し、cookie が無い・値が空・値が `'mystery'`
+のいずれか (= 未ログイン) なら e-hentai.org にリダイレクトする。
+`exhRedirect` 設定で有効/無効を切り替え、`storage.onChanged` でリアクティブに反映。
+
+### Content Script (`src/content/main.tsx`)
+
+e-hentai.org / exhentai.org のビューアーページ (`/s/` URL) に注入される。
+主な機能:
+
+- **画像フィット** (`fit.ts`): `<style>` 要素を注入して画像を viewport に合わせる
+- **オートスクロール** (`scroll.ts`): ページ遷移後に画像位置へスクロール
+- **プリロード** (`preloader.ts`): 次ページの HTML を fetch → 画像 URL を抽出 →
+  `Image` で先読み。fetch 失敗時は hidden iframe にフォールバック
+- **見開き表示** (`spread.ts`): 現在ページと隣ページの画像を並べてオーバーレイ表示。
+  `pageUrlMap` / `pageImageMap` でページ番号と URL/画像 URL の対応を管理し、
+  `sessionStorage` で永続化
+- **ナビゲーション** (`navigation.ts`): ビューアー HTML のパース、ページ URL
+  の解決、ギャラリーページからの URL 一括取得
+
+**状態管理:** `state.ts` で Preact signals (`settings`, `menuOpen`,
+`spreadState`, `virtualPage` 等) を定義。`main.tsx` 内の `effect()` で
+設定変更に反応してフィット・プリロード・見開きを更新する。配管役として
+`settings.ts` が `storage.local` ↔ `settings` signal の同期 (読込時に
+`normalizeSettings` で正規化)、`status.ts` が `statusLines` signal 経由の
+ステータス行表示を担う。
+
+**UI:** `components/App.tsx` をルートとして Preact コンポーネントツリーを
+`#eh-helper-root` に `render()` する。コンポーネントは signal の `.value` を
+直接読んでリアクティブに更新される。
+
+### Popup (`src/popup/main.ts`)
+
+設定パネル。`browser.storage.local` に設定を保存し、
+`browser.tabs.sendMessage` で content script に `reload-settings` を通知する。
+Preact は使わず、素の DOM 操作で UI を構築。
+
+### メッセージング規約
+
+popup → content: `browser.tabs.sendMessage(tabId, { target: 'eh-helper-content', type: '...' })`
+content 側は `browser.runtime.onMessage` でリスンし、`target` フィールドで
+フィルタリングする。メッセージタイプ: `reload-settings`, `scroll-to-image`,
+`toggle-fullscreen`。
+
+### 共有コード (`src/shared/`)
+
+`viewer-utils.ts`: URL パース・ページ番号抽出・見開き計算などの純粋関数。
+`constants.ts`: デフォルト設定値とタイミング定数。
+`types.ts`: `Settings`, `SpreadState` 等の型定義。
+`components/`: content script とポップアップで共有する Preact コンポーネント。
+
+### Preact JSX の注意点
+
+- `className` ではなく `class` を使う (ESLint で `react/no-unknown-property`
+  に `class` を許可済み)
+- コンポーネントのインポートは `.jsx` 拡張子:
+  `import { App } from './components/App.jsx'`
+
+## 開発コマンド
+
+`npm run dev` で build:watch + web-ext run を同時起動 (要 `.env` に AMO 設定)。
+個別ビルドは `npm run build` / `npm run build:watch` (監視リビルド)。
+
+### テスト
+
+```bash
+npm run test                              # 全テスト実行
+npx vitest run test/viewer-utils.test.ts  # 単一テストファイル実行
+npm run test:watch                        # ウォッチモード
+```
+
+テストは `test/helpers/browser-mock.ts` で `browser` グローバルをモック化する
+(Vitest の `setupFiles` で自動読み込み)。
+
+## 品質ゲート
+
+コード・スクリプト・ツール・ドキュメントを変更したら、コミット前に必ず実行:
 
 ```bash
 npm run check
 ```
 
-This runs `lint`, `format:check`, `test`, `addon:lint`, and `addon:build`
-(which includes `npm run build`). It must pass before you commit. The same
-command runs in CI (`.github/workflows/ci.yml`) on every pull request and on
-pushes that touch code.
+`typecheck` → `lint` → `format:check` → `test` → `build` → `addon:lint` →
+`addon:build` を順に実行する。すべて通らなければコミットしない。
+CI (`.github/workflows/ci.yml`) でも PR とコード変更を含む main push 時に
+同じコマンドが走る。
 
-Line endings are normalized to LF via `.gitattributes`. Do not reintroduce CRLF;
-if `format:check` flags files you did not touch, run `npm run format`.
+改行コードは `.gitattributes` で LF に統一されている。CRLF を混入させないこと。
+触っていないファイルで `format:check` が失敗した場合は `npm run format` を実行。
 
-## Commit discipline
+## コミット規約
 
-When a coherent unit of work is complete, create a git commit before moving on
-to unrelated work. Commit frequently — each logical change (feature, fix,
-refactor step) should be its own commit.
+論理的な変更 (機能追加・修正・リファクタ等) ごとに独立したコミットを作り、ひとまとまりが
+完了したら無関係な作業に移る前にコミットする。Conventional Commits 形式
+(`feat:` / `fix:` / `perf:` / `docs:` / `chore:` / `refactor:` / `test:` / `ci:`) を使い、
+メッセージは英語で簡潔に、何が変わったかを具体的に書く
+(例: `fix: restore auto scroll during early page load`)。
 
-Use Conventional Commits:
+## ブランチとレビューの流れ
 
-- `feat: ...` for user-facing feature additions
-- `fix: ...` for bug fixes
-- `perf: ...` for performance improvements
-- `docs: ...` for documentation-only changes
-- `chore: ...` for repository maintenance, tooling, or release tasks
-- `refactor: ...` for code restructuring without behavior changes
-- `test: ...` for test additions or updates
-- `ci: ...` for CI/CD workflow changes
+`main` に直接コミットしない。トピックブランチで作業し、Pull Request を作成して
+CI を通してからマージする。明示的に指示されない限り、無関係な変更はコミットしない。
 
-Keep the message concise and specific to what changed.
+## リリース
 
-Examples:
-
-- `fix: restore auto scroll during early page load`
-- `perf: reduce preload retries and cache viewer metadata`
-- `docs: document WSL debugging workflow`
-- `chore: bump version to 0.2.2`
-
-## Branch and review flow
-
-Do not commit directly to `main`. Work on a topic branch and open a pull request
-so CI runs and the change is reviewable. Do not commit unrelated user changes
-unless explicitly asked.
-
-## Releases
-
-`npm run version:patch|minor|major` bumps the version. Pushing a version change
-to `main` triggers signing + GitHub Release via
-`.github/workflows/sign-addon.yml`.
+`npm run version:patch|minor|major` でバージョンを更新する。
+バージョン変更を `main` に push すると
+`.github/workflows/sign-addon.yml` により AMO 署名 + GitHub Release が作成される。
 
 ## Codex stop hook
 
-`scripts/codex-hooks/check-on-stop.sh` runs `npm run check` automatically at
-Codex `Stop` when tracked files changed. It identifies this project by the
-`package.json` `name`, so it is safe to register globally and only fires here.
-
-Register it in `~/.codex/config.toml` (path/format depend on your Codex
-version), e.g.:
+`scripts/codex-hooks/check-on-stop.sh` は Codex の `Stop` 時、追跡ファイルに変更があれば
+`npm run check` を自動実行する (`package.json` の `name` で識別し、このプロジェクトでのみ発火)。
+`~/.codex/config.toml` に登録 (パス・形式は Codex のバージョン依存):
 
 ```toml
 [hooks]
 stop = ["sh", "scripts/codex-hooks/check-on-stop.sh"]
 ```
 
-If the hook is not registered, run `npm run check` manually before committing.
+未登録ならコミット前に手動で `npm run check` を実行。
