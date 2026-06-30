@@ -290,3 +290,70 @@
   pointer-events: none;
   border: 0;
 }
+
+@media (pointer: coarse) {
+  #eh-helper-menu-btn {
+    width: 52px;
+    height: 52px;
+    font-size: 28px;
+    line-height: 52px;
+    border-radius: 6px;
+  }
+
+  #eh-helper-spread-close {
+    width: 52px;
+    height: 52px;
+    font-size: 30px;
+    line-height: 52px;
+    border-radius: 6px;
+  }
+
+  #eh-helper-menu-panel {
+    top: 60px;
+    width: 300px;
+    padding: 14px;
+    gap: 12px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .eh-menu-label {
+    font-size: 12px;
+  }
+
+  .eh-menu-seg button {
+    height: 38px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  #eh-helper-menu-panel label {
+    font-size: 14px;
+    gap: 8px;
+    min-height: 38px;
+  }
+
+  #eh-helper-menu-panel input[type='checkbox'] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .eh-menu-number-input {
+    width: 72px;
+    height: 38px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  .eh-menu-actions button {
+    height: 38px;
+    font-size: 14px;
+    border-radius: 5px;
+  }
+
+  #eh-helper-status {
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+}
