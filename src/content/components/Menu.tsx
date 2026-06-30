@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { menuOpen, settings } from '../state.js';
+import { menuOpen, settings, controlsVisible, spreadState } from '../state.js';
 import { saveSetting } from '../settings.js';
 import { scrollToImage } from '../scroll.js';
 import { Segmented } from '../../shared/components/Segmented.jsx';
@@ -126,6 +126,8 @@ function MenuPanel() {
 
 export function Menu() {
   const open = menuOpen.value;
+  const overlayActive = spreadState.value.active;
+  const hideButton = overlayActive && !controlsVisible.value;
 
   useEffect(
     function () {
@@ -151,19 +153,21 @@ export function Menu() {
 
   return (
     <>
-      <button
-        id="eh-helper-menu-btn"
-        type="button"
-        class={open ? 'eh-menu-open' : ''}
-        aria-label={msg('menuSettingsLabel')}
-        onClick={function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          menuOpen.value = !menuOpen.value;
-        }}
-      >
-        ☰
-      </button>
+      {!hideButton && (
+        <button
+          id="eh-helper-menu-btn"
+          type="button"
+          class={open ? 'eh-menu-open' : ''}
+          aria-label={msg('menuSettingsLabel')}
+          onClick={function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            menuOpen.value = !menuOpen.value;
+          }}
+        >
+          ☰
+        </button>
+      )}
       {open && <MenuPanel />}
     </>
   );
