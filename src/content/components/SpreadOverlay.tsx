@@ -1,14 +1,26 @@
 import { useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
-import { spreadState, settings, controlsVisible, menuOpen } from '../state.js';
-import { advanceSpread, retreatSpread, exitOverlay, retryImage } from '../spread.js';
+import {
+  spreadState,
+  settings,
+  controlsVisible,
+  menuOpen,
+  virtualPage,
+  totalPages
+} from '../state.js';
+import { advanceSpread, retreatSpread, exitOverlay, retryImage, seekToPage } from '../spread.js';
 import { applySpreadFit } from '../fit.js';
-import { getOverlayClickZone } from '../../shared/viewer-utils.js';
+import {
+  getOverlayClickZone,
+  pageFromSeekFraction,
+  seekFractionFromPage
+} from '../../shared/viewer-utils.js';
 import { WHEEL_COOLDOWN_MS } from '../../shared/constants.js';
 
 const leftError = signal(false);
 const rightError = signal(false);
 let lastWheelAt = 0;
+const seekPreview = signal<number | null>(null);
 
 export function SpreadOverlay() {
   const state = spreadState.value;
@@ -90,6 +102,38 @@ export function SpreadOverlay() {
     }
   }
 
+  function pageFromPointer(event: PointerEvent): number {
+    const track = document.getElementById('eh-helper-seek-track');
+    const total = totalPages.value;
+    if (!track || total <= 0) return virtualPage.value || 1;
+    const rect = track.getBoundingClientRect();
+    const fraction = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    return pageFromSeekFraction(fraction, total);
+  }
+
+  function handleSeekDown(event: PointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (totalPages.value <= 0) return;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    seekPreview.value = pageFromPointer(event);
+  }
+
+  function handleSeekMove(event: PointerEvent) {
+    if (seekPreview.value === null) return;
+    event.preventDefault();
+    seekPreview.value = pageFromPointer(event);
+  }
+
+  function handleSeekUp(event: PointerEvent) {
+    if (seekPreview.value === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target = seekPreview.value;
+    seekPreview.value = null;
+    seekToPage(target);
+  }
+
   function handleMouseMove(event: MouseEvent) {
     const overlay = event.currentTarget as HTMLElement;
     const width = overlay.clientWidth;
@@ -128,6 +172,41 @@ export function SpreadOverlay() {
         <button id="eh-helper-spread-close" onClick={handleClose}>
           ×
         </button>
+      )}
+      {controlsVisible.value && (
+        <div id="eh-helper-spread-controls" onClick={(e) => e.stopPropagation()}>
+          <div
+            id="eh-helper-seek-track"
+            class={totalPages.value <= 0 ? 'eh-seek-disabled' : ''}
+            onPointerDown={handleSeekDown}
+            onPointerMove={handleSeekMove}
+            onPointerUp={handleSeekUp}
+          >
+            <div
+              id="eh-helper-seek-fill"
+              style={{
+                width:
+                  seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value) *
+                    100 +
+                  '%'
+              }}
+            />
+            <div
+              id="eh-helper-seek-thumb"
+              style={{
+                left:
+                  seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value) *
+                    100 +
+                  '%'
+              }}
+            />
+          </div>
+          <div id="eh-helper-seek-count">
+            {(seekPreview.value ?? virtualPage.value) || 0}
+            {' / '}
+            {totalPages.value > 0 ? totalPages.value : '-'}
+          </div>
+        </div>
       )}
       <img id="eh-helper-spread-left" src={state.leftSrc || undefined} onError={handleLeftError} />
       <img
