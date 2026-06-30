@@ -10,9 +10,10 @@ import {
   getGalleryBaseUrl,
   fetchGalleryPageUrls,
   getImageUrlFromDocument,
+  getNextPageUrlFromDocument,
   getTotalPageLabel,
   resolvePageData,
-  viewerDocCache,
+  viewerDataCache,
   pageUrlMap,
   pageImageMap,
   persistPageMaps,
@@ -267,7 +268,7 @@ export function retryImage(side: 'left' | 'right') {
   const pageUrl = pageUrlMap[page];
   if (!pageUrl) return;
 
-  viewerDocCache.delete(pageUrl);
+  viewerDataCache.delete(pageUrl);
 
   fetch(pageUrl, { credentials: 'include', cache: 'reload' })
     .then(function (res) {
@@ -276,9 +277,12 @@ export function retryImage(side: 'left' | 'right') {
     })
     .then(function (html) {
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      viewerDocCache.set(pageUrl, doc);
       const imageUrl = getImageUrlFromDocument(doc, pageUrl);
       if (!imageUrl) return;
+      viewerDataCache.set(pageUrl, {
+        imageUrl: imageUrl,
+        followingUrl: getNextPageUrlFromDocument(doc, pageUrl)
+      });
       pageImageMap[page] = imageUrl;
       persistPageMaps();
       if (side === 'right') {
