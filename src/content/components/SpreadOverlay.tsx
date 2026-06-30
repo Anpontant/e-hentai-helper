@@ -50,6 +50,15 @@ export function SpreadOverlay() {
     [state.rightSrc]
   );
 
+  useEffect(
+    function () {
+      if (!controlsVisible.value) {
+        seekPreview.value = null;
+      }
+    },
+    [controlsVisible.value]
+  );
+
   if (!state.active) return null;
 
   function handleZone(clientX: number) {
@@ -68,14 +77,18 @@ export function SpreadOverlay() {
   }
 
   function handleClick(event: MouseEvent) {
-    if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
+    const target = event.target as HTMLElement;
+    if (target.id === 'eh-helper-spread-close') return;
+    if (target.closest('#eh-helper-spread-controls')) return;
     event.preventDefault();
     event.stopPropagation();
     handleZone(event.clientX);
   }
 
   function handleTouchEnd(event: TouchEvent) {
-    if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
+    const target = event.target as HTMLElement;
+    if (target.id === 'eh-helper-spread-close') return;
+    if (target.closest('#eh-helper-spread-controls')) return;
     const touch = event.changedTouches[0];
     if (!touch) return;
     event.preventDefault();
@@ -107,8 +120,8 @@ export function SpreadOverlay() {
     const total = totalPages.value;
     if (!track || total <= 0) return virtualPage.value || 1;
     const rect = track.getBoundingClientRect();
-    const fraction = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
-    return pageFromSeekFraction(fraction, total);
+    const leftFraction = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    return pageFromSeekFraction(1 - leftFraction, total);
   }
 
   function handleSeekDown(event: PointerEvent) {
@@ -135,6 +148,7 @@ export function SpreadOverlay() {
   }
 
   function handleMouseMove(event: MouseEvent) {
+    if (seekPreview.value !== null) return;
     const overlay = event.currentTarget as HTMLElement;
     const width = overlay.clientWidth;
     const zone = getOverlayClickZone(width > 0 ? event.clientX / width : 0.5);
@@ -159,6 +173,8 @@ export function SpreadOverlay() {
     rightError.value = true;
   }
 
+  const seekFrac = seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value);
+
   return (
     <div
       id="eh-helper-spread-overlay"
@@ -182,24 +198,8 @@ export function SpreadOverlay() {
             onPointerMove={handleSeekMove}
             onPointerUp={handleSeekUp}
           >
-            <div
-              id="eh-helper-seek-fill"
-              style={{
-                width:
-                  seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value) *
-                    100 +
-                  '%'
-              }}
-            />
-            <div
-              id="eh-helper-seek-thumb"
-              style={{
-                left:
-                  seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value) *
-                    100 +
-                  '%'
-              }}
-            />
+            <div id="eh-helper-seek-fill" style={{ width: seekFrac * 100 + '%' }} />
+            <div id="eh-helper-seek-thumb" style={{ left: (1 - seekFrac) * 100 + '%' }} />
           </div>
           <div id="eh-helper-seek-count">
             {(seekPreview.value ?? virtualPage.value) || 0}
