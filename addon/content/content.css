@@ -341,17 +341,6 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
-.eh-helper-preload-frame {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  left: -99999px;
-  top: -99999px;
-  opacity: 0;
-  pointer-events: none;
-  border: 0;
-}
-
 @media (pointer: coarse) {
   #eh-helper-menu-btn {
     width: 52px;

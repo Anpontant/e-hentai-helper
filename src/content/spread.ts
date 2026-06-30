@@ -21,7 +21,7 @@ import {
 import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
-import { schedulePreloadAfterCurrentImage } from './preloader.js';
+import { schedulePreloadAfterCurrentImage, resetPreloadCache } from './preloader.js';
 
 let spreadRenderRunId = 0;
 let lastSpreadActive = false;
@@ -306,6 +306,7 @@ export function exitOverlay() {
 }
 
 function removeSpreadOverlayState() {
+  resetPreloadCache();
   spreadRenderRunId += 1;
   spreadState.value = {
     active: false,

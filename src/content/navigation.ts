@@ -243,11 +243,15 @@ export function getGalleryBaseUrl() {
 
 let galleryItemsPerPage = GALLERY_ITEMS_PER_PAGE;
 
-export function fetchGalleryPageUrls(galleryBaseUrl: string, targetPage: number) {
+export function fetchGalleryPageUrls(
+  galleryBaseUrl: string,
+  targetPage: number,
+  signal?: AbortSignal
+) {
   const pageIndex = Math.floor((targetPage - 1) / galleryItemsPerPage);
   const url = pageIndex > 0 ? galleryBaseUrl + '?p=' + pageIndex : galleryBaseUrl;
 
-  return fetch(url, { credentials: 'include', cache: 'force-cache' })
+  return fetch(url, { credentials: 'include', cache: 'force-cache', signal: signal })
     .then(function (res) {
       if (!res.ok) throw new Error('gallery fetch failed: ' + res.status);
       return res.text();
