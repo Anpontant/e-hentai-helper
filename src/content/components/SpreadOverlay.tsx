@@ -1,11 +1,14 @@
 import { useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
-import { spreadState, settings } from '../state.js';
+import { spreadState, settings, controlsVisible, menuOpen } from '../state.js';
 import { advanceSpread, retreatSpread, exitOverlay, retryImage } from '../spread.js';
 import { applySpreadFit } from '../fit.js';
+import { getOverlayClickZone } from '../../shared/viewer-utils.js';
+import { WHEEL_COOLDOWN_MS } from '../../shared/constants.js';
 
 const leftError = signal(false);
 const rightError = signal(false);
+let lastWheelAt = 0;
 
 export function SpreadOverlay() {
   const state = spreadState.value;
@@ -37,11 +40,26 @@ export function SpreadOverlay() {
 
   if (!state.active) return null;
 
+  function handleZone(clientX: number) {
+    const overlay = document.getElementById('eh-helper-spread-overlay');
+    const width = overlay ? overlay.clientWidth : window.innerWidth;
+    const zone = getOverlayClickZone(width > 0 ? clientX / width : 0.5);
+    if (zone === 'next') {
+      advanceSpread();
+    } else if (zone === 'prev') {
+      retreatSpread();
+    } else {
+      const next = !controlsVisible.value;
+      controlsVisible.value = next;
+      if (!next) menuOpen.value = false;
+    }
+  }
+
   function handleClick(event: MouseEvent) {
     if ((event.target as HTMLElement).id === 'eh-helper-spread-close') return;
     event.preventDefault();
     event.stopPropagation();
-    navigateByX(event.clientX);
+    handleZone(event.clientX);
   }
 
   function handleTouchEnd(event: TouchEvent) {
@@ -50,17 +68,7 @@ export function SpreadOverlay() {
     if (!touch) return;
     event.preventDefault();
     event.stopPropagation();
-    navigateByX(touch.clientX);
-  }
-
-  function navigateByX(clientX: number) {
-    const overlay = document.getElementById('eh-helper-spread-overlay');
-    const midX = overlay ? overlay.clientWidth / 2 : window.innerWidth / 2;
-    if (clientX < midX) {
-      advanceSpread();
-    } else {
-      retreatSpread();
-    }
+    handleZone(touch.clientX);
   }
 
   function handleClose(event: MouseEvent) {
@@ -69,14 +77,26 @@ export function SpreadOverlay() {
     exitOverlay();
   }
 
+  function handleWheel(event: WheelEvent) {
+    event.preventDefault();
+    if (Math.abs(event.deltaY) < 1) return;
+    const now = Date.now();
+    if (now - lastWheelAt < WHEEL_COOLDOWN_MS) return;
+    lastWheelAt = now;
+    if (event.deltaY > 0) {
+      advanceSpread();
+    } else {
+      retreatSpread();
+    }
+  }
+
   function handleMouseMove(event: MouseEvent) {
     const overlay = event.currentTarget as HTMLElement;
-    const midX = overlay.clientWidth / 2;
-    const cls = event.clientX < midX ? 'eh-cursor-left' : 'eh-cursor-right';
-    if (!overlay.classList.contains(cls)) {
-      overlay.classList.remove('eh-cursor-left', 'eh-cursor-right');
-      overlay.classList.add(cls);
-    }
+    const width = overlay.clientWidth;
+    const zone = getOverlayClickZone(width > 0 ? event.clientX / width : 0.5);
+    const cls = zone === 'next' ? 'eh-cursor-left' : zone === 'prev' ? 'eh-cursor-right' : '';
+    overlay.classList.remove('eh-cursor-left', 'eh-cursor-right');
+    if (cls) overlay.classList.add(cls);
   }
 
   function handleLeftError() {
@@ -101,11 +121,14 @@ export function SpreadOverlay() {
       class={state.single ? 'eh-spread-single' : ''}
       onClick={handleClick}
       onTouchEnd={handleTouchEnd}
+      onWheel={handleWheel}
       onMouseMove={handleMouseMove}
     >
-      <button id="eh-helper-spread-close" onClick={handleClose}>
-        ×
-      </button>
+      {controlsVisible.value && (
+        <button id="eh-helper-spread-close" onClick={handleClose}>
+          ×
+        </button>
+      )}
       <img id="eh-helper-spread-left" src={state.leftSrc || undefined} onError={handleLeftError} />
       <img
         id="eh-helper-spread-right"
