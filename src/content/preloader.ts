@@ -31,6 +31,11 @@ const preloadedPages = new Set<number>();
 let windowImages: Map<number, HTMLImageElement> = new Map();
 let currentWindowPages: number[] = [];
 let preloadAbortController: AbortController | null = null;
+// Single pending "preload after current image" schedule. Tracked so repeated
+// calls (settings effect + render + DOM-change handler) collapse to one pending
+// timer/listener instead of stacking redundant ones.
+let pendingPreloadTimer = 0;
+let pendingLoadTarget: { img: HTMLImageElement; handler: () => void } | null = null;
 
 function log(...args: unknown[]) {
   if (!LOG || !window.console) return;
@@ -60,6 +65,7 @@ function resetWindowState() {
 // Call on overlay teardown (gallery/session change).
 export function resetPreloadCache() {
   abortActivePreload();
+  clearPendingPreloadSchedule();
   preloadedPages.clear();
   resetWindowState();
   preloadState = {};
@@ -296,18 +302,37 @@ export function preloadNext() {
   void preloadPagesAhead(pages, runId);
 }
 
+function clearPendingPreloadSchedule() {
+  if (pendingPreloadTimer) {
+    window.clearTimeout(pendingPreloadTimer);
+    pendingPreloadTimer = 0;
+  }
+  if (pendingLoadTarget) {
+    pendingLoadTarget.img.removeEventListener('load', pendingLoadTarget.handler);
+    pendingLoadTarget = null;
+  }
+}
+
+function armPreloadTimer() {
+  pendingPreloadTimer = window.setTimeout(function () {
+    pendingPreloadTimer = 0;
+    preloadNext();
+  }, PRELOAD_DELAY_MS);
+}
+
 export function schedulePreloadAfterCurrentImage() {
+  clearPendingPreloadSchedule();
+
   const img = getMainImage();
   if (!img || img.complete) {
-    window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
+    armPreloadTimer();
     return;
   }
 
-  img.addEventListener(
-    'load',
-    function () {
-      window.setTimeout(preloadNext, PRELOAD_DELAY_MS);
-    },
-    { once: true }
-  );
+  const handler = function () {
+    pendingLoadTarget = null;
+    armPreloadTimer();
+  };
+  pendingLoadTarget = { img: img, handler: handler };
+  img.addEventListener('load', handler, { once: true });
 }

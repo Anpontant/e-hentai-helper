@@ -6,10 +6,17 @@ import {
   parsePagePair,
   getUrlTail
 } from '../shared/viewer-utils.js';
-import { MAX_VIEWER_DOC_CACHE, GALLERY_ITEMS_PER_PAGE } from '../shared/constants.js';
+import { MAX_VIEWER_PAGE_CACHE, GALLERY_ITEMS_PER_PAGE } from '../shared/constants.js';
 import { virtualPage, totalPages } from './state.js';
 
-export const viewerDocCache = new Map<string, Document>();
+// Cache the extracted page data (image URL + following page URL) rather than the
+// full parsed Document. We only ever read those two fields, so keeping whole DOM
+// trees alive (up to MAX_VIEWER_PAGE_CACHE of them) wasted memory.
+export interface ViewerPageData {
+  imageUrl: string;
+  followingUrl: string;
+}
+export const viewerDataCache = new Map<string, ViewerPageData>();
 export const pageUrlMap: Record<string, string> = {};
 export const pageImageMap: Record<string, string> = {};
 
@@ -146,15 +153,17 @@ export function getPageLabelFromDocument(doc: Document, fallbackUrl: string) {
   return parsed ? parsed.current : getViewerPageFromUrl(fallbackUrl) || getUrlTail(fallbackUrl);
 }
 
-function pruneViewerDocCache() {
-  while (viewerDocCache.size > MAX_VIEWER_DOC_CACHE) {
-    const firstKey = viewerDocCache.keys().next().value!;
-    viewerDocCache.delete(firstKey);
+function pruneViewerDataCache() {
+  while (viewerDataCache.size > MAX_VIEWER_PAGE_CACHE) {
+    const firstKey = viewerDataCache.keys().next().value!;
+    viewerDataCache.delete(firstKey);
   }
 }
 
-export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
-  const cached = viewerDocCache.get(pageUrl);
+// Fetch a viewer page, parse it once, extract the fields we need, and cache the
+// extracted record. The parsed Document is discarded so it can be GC'd.
+function fetchViewerPageData(pageUrl: string, signal?: AbortSignal): Promise<ViewerPageData> {
+  const cached = viewerDataCache.get(pageUrl);
   if (cached) return Promise.resolve(cached);
 
   return fetch(pageUrl, {
@@ -168,9 +177,13 @@ export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
     })
     .then(function (html) {
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      viewerDocCache.set(pageUrl, doc);
-      pruneViewerDocCache();
-      return doc;
+      const data: ViewerPageData = {
+        imageUrl: getImageUrlFromDocument(doc, pageUrl),
+        followingUrl: getNextPageUrlFromDocument(doc, pageUrl)
+      };
+      viewerDataCache.set(pageUrl, data);
+      pruneViewerDataCache();
+      return data;
     });
 }
 
@@ -179,21 +192,16 @@ export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
 // keyed by real page numbers (always-valid data), so callers that care about
 // render staleness guard their own display updates — e.g. the spreadRenderRunId
 // check around the callback in loadPartnerImage — not these writes.
-export function resolvePageData(
-  url: string,
-  signal?: AbortSignal
-): Promise<{ imageUrl: string; followingUrl: string }> {
-  return fetchViewerDocument(url, signal).then(function (doc) {
-    const imageUrl = getImageUrlFromDocument(doc, url);
-    const followingUrl = getNextPageUrlFromDocument(doc, url);
+export function resolvePageData(url: string, signal?: AbortSignal): Promise<ViewerPageData> {
+  return fetchViewerPageData(url, signal).then(function (data) {
     const page = parseInt(getViewerPageFromUrl(url), 10);
-    if (page && imageUrl) pageImageMap[page] = imageUrl;
-    if (followingUrl) {
-      const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
-      if (followingPage) pageUrlMap[followingPage] = followingUrl;
+    if (page && data.imageUrl) pageImageMap[page] = data.imageUrl;
+    if (data.followingUrl) {
+      const followingPage = parseInt(getViewerPageFromUrl(data.followingUrl), 10);
+      if (followingPage) pageUrlMap[followingPage] = data.followingUrl;
     }
     persistPageMaps();
-    return { imageUrl: imageUrl, followingUrl: followingUrl };
+    return data;
   });
 }
 

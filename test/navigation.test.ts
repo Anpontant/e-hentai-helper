@@ -1,9 +1,13 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
   getNextPageUrlFromDocument,
   getPrevPageUrlFromDocument,
   getImageUrlFromDocument,
-  getPageLabelFromDocument
+  getPageLabelFromDocument,
+  resolvePageData,
+  viewerDataCache,
+  pageUrlMap,
+  pageImageMap
 } from '../src/content/navigation.js';
 
 function createDoc(html: string): Document {
@@ -160,5 +164,41 @@ describe('getPageLabelFromDocument', () => {
     const doc = createDoc('<p>No page info</p>');
     const result = getPageLabelFromDocument(doc, 'https://example.com/path/segment');
     expect(result).toBe('segment');
+  });
+});
+
+describe('resolvePageData', () => {
+  const pageUrl = 'https://e-hentai.org/s/abc123/3019721-7';
+  const html =
+    '<a href="https://e-hentai.org/s/def456/3019721-8">' +
+    '<img id="img" src="https://img.example/page7.jpg"></a>';
+
+  beforeEach(() => {
+    viewerDataCache.clear();
+    Object.keys(pageUrlMap).forEach((k) => delete pageUrlMap[k]);
+    Object.keys(pageImageMap).forEach((k) => delete pageImageMap[k]);
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({ ok: true, text: () => Promise.resolve(html) } as Response)
+    );
+  });
+
+  test('extracts image + following URL and fills the page maps', async () => {
+    const data = await resolvePageData(pageUrl);
+    expect(data.imageUrl).toBe('https://img.example/page7.jpg');
+    expect(data.followingUrl).toBe('https://e-hentai.org/s/def456/3019721-8');
+    expect(pageImageMap[7]).toBe('https://img.example/page7.jpg');
+    expect(pageUrlMap[8]).toBe('https://e-hentai.org/s/def456/3019721-8');
+  });
+
+  test('caches the extracted record (not the Document) and skips re-fetch on hit', async () => {
+    await resolvePageData(pageUrl);
+    await resolvePageData(pageUrl);
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    const cached = viewerDataCache.get(pageUrl);
+    expect(cached).toEqual({
+      imageUrl: 'https://img.example/page7.jpg',
+      followingUrl: 'https://e-hentai.org/s/def456/3019721-8'
+    });
   });
 });
