@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { settings, menuOpen, virtualPage } from './state.js';
+import { settings, menuOpen, virtualPage, controlsVisible } from './state.js';
 import { loadSettings } from './settings.js';
 import { updateFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
@@ -157,6 +157,11 @@ document.addEventListener('keydown', function (event) {
     if (menuOpen.value) {
       event.preventDefault();
       menuOpen.value = false;
+      return;
+    }
+    if (controlsVisible.value && isOverlayActive()) {
+      event.preventDefault();
+      controlsVisible.value = false;
       return;
     }
     if (isOverlayActive()) {

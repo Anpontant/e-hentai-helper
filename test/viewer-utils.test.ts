@@ -288,3 +288,55 @@ describe('getGalleryIdFromUrl', () => {
     expect(utils.getGalleryIdFromUrl(undefined as unknown as string)).toBe('');
   });
 });
+
+describe('getOverlayClickZone', () => {
+  test('splits into next / menu / prev by fraction', () => {
+    expect(utils.getOverlayClickZone(0)).toBe('next');
+    expect(utils.getOverlayClickZone(0.39)).toBe('next');
+    expect(utils.getOverlayClickZone(0.4)).toBe('menu');
+    expect(utils.getOverlayClickZone(0.5)).toBe('menu');
+    expect(utils.getOverlayClickZone(0.6)).toBe('menu');
+    expect(utils.getOverlayClickZone(0.61)).toBe('prev');
+    expect(utils.getOverlayClickZone(1)).toBe('prev');
+  });
+
+  test('clamps out-of-range fractions', () => {
+    expect(utils.getOverlayClickZone(-0.5)).toBe('next');
+    expect(utils.getOverlayClickZone(1.5)).toBe('prev');
+  });
+});
+
+describe('pageFromSeekFraction', () => {
+  test('maps fraction endpoints to first and last page', () => {
+    expect(utils.pageFromSeekFraction(0, 10)).toBe(1);
+    expect(utils.pageFromSeekFraction(1, 10)).toBe(10);
+  });
+
+  test('maps middle fraction to nearest page', () => {
+    expect(utils.pageFromSeekFraction(0.5, 11)).toBe(6);
+  });
+
+  test('clamps fraction and handles non-positive total', () => {
+    expect(utils.pageFromSeekFraction(-1, 10)).toBe(1);
+    expect(utils.pageFromSeekFraction(2, 10)).toBe(10);
+    expect(utils.pageFromSeekFraction(0.5, 0)).toBe(1);
+    expect(utils.pageFromSeekFraction(0.5, 1)).toBe(1);
+  });
+});
+
+describe('seekFractionFromPage', () => {
+  test('maps first and last page to 0 and 1', () => {
+    expect(utils.seekFractionFromPage(1, 10)).toBe(0);
+    expect(utils.seekFractionFromPage(10, 10)).toBeCloseTo(1);
+  });
+
+  test('returns 0 when total has no range', () => {
+    expect(utils.seekFractionFromPage(1, 1)).toBe(0);
+    expect(utils.seekFractionFromPage(5, 0)).toBe(0);
+  });
+
+  test('clamps page outside range', () => {
+    expect(utils.seekFractionFromPage(0, 10)).toBe(0);
+    expect(utils.seekFractionFromPage(99, 10)).toBeCloseTo(1);
+  });
+});

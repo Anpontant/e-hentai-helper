@@ -1,4 +1,4 @@
-import { settings, spreadState, virtualPage, totalPages } from './state.js';
+import { settings, spreadState, virtualPage, totalPages, controlsVisible } from './state.js';
 import {
   getViewerPageFromUrl,
   getSpreadPageInfo,
@@ -255,6 +255,11 @@ export function retreatSpread() {
   renderSpreadAtPage(targetPage);
 }
 
+export function seekToPage(page: number) {
+  if (!Number.isFinite(page)) return;
+  renderSpreadAtPage(Math.round(page));
+}
+
 export function retryImage(side: 'left' | 'right') {
   const rightPage = virtualPage.value;
   if (!rightPage) return;
@@ -325,6 +330,7 @@ function removeSpreadOverlayState() {
     single: false
   };
 
+  controlsVisible.value = false;
   virtualPage.value = 0;
   totalPages.value = 0;
 

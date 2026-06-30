@@ -9,6 +9,7 @@ export const MAX_VIEWER_DOC_CACHE = 12;
 export const GALLERY_ITEMS_PER_PAGE = 20;
 export const MAX_SCROLL_RETRIES = 20;
 export const SCROLL_RETRY_DELAY_MS = 100;
+export const WHEEL_COOLDOWN_MS = 200;
 
 export const DEFAULT_SETTINGS: Settings = {
   preloadAheadCount: 2,
