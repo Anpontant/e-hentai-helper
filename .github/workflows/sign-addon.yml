@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -86,12 +88,14 @@ jobs:
           TAG="${{ steps.release.outputs.tag }}"
           VERSION="${{ steps.release.outputs.version }}"
           XPI="${{ steps.release.outputs.xpi }}"
+          node scripts/release-notes.mjs "$VERSION" > dist/release-notes.md \
+            || echo "Signed Firefox add-on release $VERSION." > dist/release-notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$XPI" dist/updates.json --clobber
           else
             gh release create "$TAG" "$XPI" dist/updates.json \
               --title "E-Hentai Helper $VERSION" \
-              --notes "Signed Firefox add-on release $VERSION."
+              --notes-file dist/release-notes.md
           fi
       - name: Upload signed artifacts
         if: steps.version.outputs.exists != 'true'
