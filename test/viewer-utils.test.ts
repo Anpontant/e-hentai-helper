@@ -340,3 +340,28 @@ describe('seekFractionFromPage', () => {
     expect(utils.seekFractionFromPage(99, 10)).toBeCloseTo(1);
   });
 });
+
+describe('getPreloadWindowPages', () => {
+  test('returns the next count pages after the current spread', () => {
+    expect(utils.getPreloadWindowPages(3, 2, 20, 5)).toEqual([5, 6, 7, 8, 9]);
+    expect(utils.getPreloadWindowPages(1, 1, 20, 3)).toEqual([2, 3, 4]);
+  });
+
+  test('truncates at total', () => {
+    expect(utils.getPreloadWindowPages(18, 2, 20, 5)).toEqual([20]);
+    expect(utils.getPreloadWindowPages(19, 2, 20, 5)).toEqual([]);
+  });
+
+  test('count of 0 yields no pages', () => {
+    expect(utils.getPreloadWindowPages(3, 2, 20, 0)).toEqual([]);
+  });
+
+  test('unknown total (<=0) does not truncate', () => {
+    expect(utils.getPreloadWindowPages(3, 1, 0, 3)).toEqual([4, 5, 6]);
+  });
+
+  test('single vs spread changes the start offset', () => {
+    expect(utils.getPreloadWindowPages(4, 1, 0, 2)).toEqual([5, 6]);
+    expect(utils.getPreloadWindowPages(4, 2, 0, 2)).toEqual([6, 7]);
+  });
+});

@@ -174,6 +174,29 @@ export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
     });
 }
 
+// Fetch a viewer page and cache-fill the page maps (image URL + the following
+// page's URL), persisting them. These map writes are unconditional cache fills
+// keyed by real page numbers (always-valid data), so callers that care about
+// render staleness guard their own display updates — e.g. the spreadRenderRunId
+// check around the callback in loadPartnerImage — not these writes.
+export function resolvePageData(
+  url: string,
+  signal?: AbortSignal
+): Promise<{ imageUrl: string; followingUrl: string }> {
+  return fetchViewerDocument(url, signal).then(function (doc) {
+    const imageUrl = getImageUrlFromDocument(doc, url);
+    const followingUrl = getNextPageUrlFromDocument(doc, url);
+    const page = parseInt(getViewerPageFromUrl(url), 10);
+    if (page && imageUrl) pageImageMap[page] = imageUrl;
+    if (followingUrl) {
+      const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
+      if (followingPage) pageUrlMap[followingPage] = followingUrl;
+    }
+    persistPageMaps();
+    return { imageUrl: imageUrl, followingUrl: followingUrl };
+  });
+}
+
 function getStorageKey() {
   const galleryId = getGalleryIdFromUrl(location.href);
   return galleryId ? 'eh-helper-maps-' + galleryId : '';
@@ -220,11 +243,15 @@ export function getGalleryBaseUrl() {
 
 let galleryItemsPerPage = GALLERY_ITEMS_PER_PAGE;
 
-export function fetchGalleryPageUrls(galleryBaseUrl: string, targetPage: number) {
+export function fetchGalleryPageUrls(
+  galleryBaseUrl: string,
+  targetPage: number,
+  signal?: AbortSignal
+) {
   const pageIndex = Math.floor((targetPage - 1) / galleryItemsPerPage);
   const url = pageIndex > 0 ? galleryBaseUrl + '?p=' + pageIndex : galleryBaseUrl;
 
-  return fetch(url, { credentials: 'include', cache: 'force-cache' })
+  return fetch(url, { credentials: 'include', cache: 'force-cache', signal: signal })
     .then(function (res) {
       if (!res.ok) throw new Error('gallery fetch failed: ' + res.status);
       return res.text();

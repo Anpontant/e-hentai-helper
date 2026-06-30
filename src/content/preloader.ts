@@ -1,25 +1,20 @@
 import { settings, preloadThumbs, virtualPage, totalPages } from './state.js';
 import { PRELOAD_DELAY_MS, LOG, IMAGE_PRELOAD_TIMEOUT_MS } from '../shared/constants.js';
 import {
-  normalizeUrl,
   getViewerPageFromUrl,
-  getUrlTail,
   getSpreadPageInfo,
+  getPreloadWindowPages,
   formatDuration
 } from '../shared/viewer-utils.js';
 import {
   getMainImage,
   getCurrentKey,
-  getNextPageUrl,
-  getNextPageUrlFromDocument,
-  getImageUrlFromDocument,
-  getPageLabelFromDocument,
-  fetchViewerDocument,
+  getGalleryBaseUrl,
+  fetchGalleryPageUrls,
   getTotalPageLabel,
-  viewerDocCache,
+  resolvePageData,
   pageUrlMap,
-  pageImageMap,
-  persistPageMaps
+  pageImageMap
 } from './navigation.js';
 import type { PreloadStateEntry } from '../shared/types.js';
 import { isOverlayActive, showStatus, showStatusLines } from './status.js';
@@ -27,7 +22,14 @@ import { isOverlayActive, showStatus, showStatusLines } from './status.js';
 let lastPreloadRootKey = '';
 let preloadState: Record<number, PreloadStateEntry> = {};
 let preloadRunId = 0;
-let preloadedImages: HTMLImageElement[] = [];
+// Persistent byte-warm tracker for the current overlay/gallery session: page numbers
+// whose image bytes have been fetched into the HTTP cache. Survives advances so that
+// overlapping preload windows skip re-fetching. Cleared only on overlay teardown.
+const preloadedPages = new Set<number>();
+// Image elements for the CURRENT window only (for the off-by-default thumb strip).
+// Reset on every preloadNext().
+let windowImages: Map<number, HTMLImageElement> = new Map();
+let currentWindowPages: number[] = [];
 let preloadAbortController: AbortController | null = null;
 
 function log(...args: unknown[]) {
@@ -47,13 +49,31 @@ export function resetPreloadRootKey() {
   lastPreloadRootKey = '';
 }
 
-function removeOldPreloadFrames() {
-  const frames = document.querySelectorAll('.eh-helper-preload-frame');
-  for (let i = 0; i < frames.length; i += 1) {
-    frames[i].remove();
-  }
-  preloadedImages = [];
+// Reset only the per-window state, NOT the persistent byte-warm tracker.
+function resetWindowState() {
+  windowImages = new Map();
+  currentWindowPages = [];
   preloadThumbs.value = [];
+}
+
+// Clear the persistent byte-warm tracker + window state + abort in-flight preloads.
+// Call on overlay teardown (gallery/session change).
+export function resetPreloadCache() {
+  abortActivePreload();
+  preloadedPages.clear();
+  resetWindowState();
+  preloadState = {};
+  lastPreloadRootKey = '';
+}
+
+function updatePreloadThumbs() {
+  if (!settings.value.showPreloadThumbs) return;
+  const thumbs: HTMLImageElement[] = [];
+  for (let i = 0; i < currentWindowPages.length; i += 1) {
+    const img = windowImages.get(currentWindowPages[i]);
+    if (img && img.src) thumbs.push(img);
+  }
+  preloadThumbs.value = thumbs;
 }
 
 function updatePreloadStatus() {
@@ -81,11 +101,7 @@ function updatePreloadStatus() {
   }
 
   if (parts.length) showStatusLines(parts);
-  if (settings.value.showPreloadThumbs) {
-    preloadThumbs.value = preloadedImages.filter(function (img) {
-      return img.src;
-    });
-  }
+  updatePreloadThumbs();
 }
 
 function setPreloadState(depth: number, patch: Partial<PreloadStateEntry>) {
@@ -93,223 +109,191 @@ function setPreloadState(depth: number, patch: Partial<PreloadStateEntry>) {
   if (settings.value.showStatus) updatePreloadStatus();
 }
 
-function preloadImage(imageUrl: string) {
+function preloadImage(page: number, imageUrl: string, runId: number) {
   return new Promise<void>(function (resolve, reject) {
     const image = new Image();
+    // Only the first of load/error/timeout takes effect. Without this, a late
+    // onload after a timeout would still mark the page warm (status failed but
+    // later reported as cache).
+    let settled = false;
     const timeout = window.setTimeout(function () {
+      if (settled) return;
+      settled = true;
       reject(new Error('image preload timeout'));
     }, IMAGE_PRELOAD_TIMEOUT_MS);
 
     image.onload = function () {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeout);
+      if (runId === preloadRunId) {
+        preloadedPages.add(page);
+        windowImages.set(page, image);
+      }
       resolve();
     };
     image.onerror = function () {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeout);
       reject(new Error('image preload failed'));
     };
     image.decoding = 'async';
     image.src = imageUrl;
-    preloadedImages.push(image);
   });
 }
 
-function preloadByHiddenFrame(nextUrl: string, depth: number, startedAt: number, runId: number) {
-  return new Promise<string>(function (resolve) {
-    if (runId !== preloadRunId) {
-      resolve('');
-      return;
-    }
-
-    setPreloadState(depth, {
-      status: 'loading',
-      page: getViewerPageFromUrl(nextUrl) || getUrlTail(nextUrl),
-      duration: 0,
-      url: nextUrl,
-      method: 'iframe'
-    });
-
-    const frameEl = document.createElement('iframe');
-    frameEl.className = 'eh-helper-preload-frame';
-    frameEl.id = 'eh-helper-preload-frame-' + depth;
-    frameEl.src = nextUrl;
-    frameEl.setAttribute('loading', 'eager');
-    frameEl.setAttribute('referrerpolicy', 'same-origin');
-
-    frameEl.addEventListener(
-      'load',
-      function () {
-        let followingUrl = '';
-        if (runId !== preloadRunId) {
-          frameEl.remove();
-          resolve('');
-          return;
-        }
-
-        try {
-          const frameDoc = frameEl.contentDocument || frameEl.contentWindow!.document;
-          const page = getPageLabelFromDocument(frameDoc, nextUrl);
-          followingUrl = getNextPageUrlFromDocument(frameDoc, nextUrl);
-          setPreloadState(depth, {
-            status: 'loaded',
-            page: page,
-            duration: Date.now() - startedAt,
-            method: 'iframe'
-          });
-        } catch (error) {
-          log('cannot read hidden frame document:', error);
-          setPreloadState(depth, {
-            status: 'failed',
-            duration: Date.now() - startedAt,
-            method: 'iframe'
-          });
-        }
-
-        frameEl.remove();
-        resolve(followingUrl);
-      },
-      { once: true }
-    );
-
-    frameEl.addEventListener(
-      'error',
-      function () {
-        if (runId === preloadRunId) {
-          setPreloadState(depth, {
-            status: 'failed',
-            duration: Date.now() - startedAt,
-            method: 'iframe'
-          });
-        }
-        frameEl.remove();
-        resolve('');
-      },
-      { once: true }
-    );
-
-    document.documentElement.appendChild(frameEl);
-  });
-}
-
-function preloadAheadFrom(nextUrl: string, depth: number) {
-  if (!nextUrl || depth > settings.value.preloadAheadCount) return;
-
-  const runId = preloadRunId;
-  const startedAt = Date.now();
-  const pageNum = parseInt(getViewerPageFromUrl(nextUrl), 10);
-  if (pageNum) pageUrlMap[pageNum] = nextUrl;
-  persistPageMaps();
-
+function markLoaded(depth: number, page: number, startedAt: number) {
   setPreloadState(depth, {
-    status: 'loading',
-    page: getViewerPageFromUrl(nextUrl) || getUrlTail(nextUrl),
-    duration: 0,
-    url: nextUrl,
-    method: 'fetch'
+    status: 'loaded',
+    page: String(page),
+    duration: Date.now() - startedAt,
+    method: 'img'
   });
+}
 
-  fetchViewerDocument(nextUrl, preloadAbortController ? preloadAbortController.signal : undefined)
-    .then(function (doc) {
-      if (runId !== preloadRunId) return '';
+function markFailed(depth: number, page: number, startedAt: number, method: string) {
+  setPreloadState(depth, {
+    status: 'failed',
+    page: String(page),
+    duration: Date.now() - startedAt,
+    method: method
+  });
+}
 
-      const page = getPageLabelFromDocument(doc, nextUrl);
-      const imageUrl = getImageUrlFromDocument(doc, nextUrl);
-      const followingUrl = getNextPageUrlFromDocument(doc, nextUrl);
+function prefetchOnePage(page: number, depth: number, runId: number) {
+  if (runId !== preloadRunId) return Promise.resolve();
 
-      if (!imageUrl) throw new Error('next image url not found');
-
-      if (pageNum) pageImageMap[pageNum] = imageUrl;
-      if (followingUrl) {
-        const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
-        if (followingPage) pageUrlMap[followingPage] = followingUrl;
+  if (preloadedPages.has(page)) {
+    // Reconstruct the thumb (off by default) for already-warm pages so the strip
+    // stays complete across overlapping windows. The Image is served from cache.
+    if (settings.value.showPreloadThumbs && !windowImages.has(page)) {
+      const cachedUrl = pageImageMap[page];
+      if (cachedUrl) {
+        const thumb = new Image();
+        thumb.src = cachedUrl;
+        windowImages.set(page, thumb);
       }
-      persistPageMaps();
+    }
+    setPreloadState(depth, { status: 'loaded', page: String(page), duration: 0, method: 'cache' });
+    return Promise.resolve();
+  }
 
-      return preloadImage(imageUrl).then(function () {
-        if (runId !== preloadRunId) return '';
-        setPreloadState(depth, {
-          status: 'loaded',
-          page: page,
-          duration: Date.now() - startedAt,
-          method: 'img'
-        });
-        return followingUrl;
+  const startedAt = Date.now();
+  setPreloadState(depth, { status: 'loading', page: String(page), duration: 0, method: 'fetch' });
+
+  // Image URL already known → skip the doc fetch, warm bytes directly.
+  const knownImageUrl = pageImageMap[page];
+  if (knownImageUrl) {
+    return preloadImage(page, knownImageUrl, runId)
+      .then(function () {
+        if (runId !== preloadRunId) return;
+        markLoaded(depth, page, startedAt);
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') return;
+        log('parallel preload failed:', error);
+        if (runId === preloadRunId) markFailed(depth, page, startedAt, 'img');
+      });
+  }
+
+  const url = pageUrlMap[page];
+  if (!url) {
+    markFailed(depth, page, startedAt, 'fetch');
+    return Promise.resolve();
+  }
+
+  return resolvePageData(url, preloadAbortController ? preloadAbortController.signal : undefined)
+    .then(function (data) {
+      if (runId !== preloadRunId) return;
+      if (!data.imageUrl) throw new Error('next image url not found');
+      return preloadImage(page, data.imageUrl, runId).then(function () {
+        if (runId !== preloadRunId) return;
+        markLoaded(depth, page, startedAt);
       });
     })
     .catch(function (error) {
-      if (error && error.name === 'AbortError') return '';
-      log('fetch/image preload failed, falling back to iframe:', error);
-      return preloadByHiddenFrame(nextUrl, depth, startedAt, runId);
-    })
-    .then(function (followingUrl) {
-      if (runId !== preloadRunId) return;
-      if (!followingUrl || normalizeUrl(followingUrl) === normalizeUrl(nextUrl)) return;
-      preloadAheadFrom(followingUrl, depth + 1);
+      if (error && error.name === 'AbortError') return;
+      log('parallel preload failed:', error);
+      if (runId === preloadRunId) markFailed(depth, page, startedAt, 'fetch');
     });
+}
+
+// Fetch gallery list pages until every window page has a URL (or no progress is made).
+function ensureWindowUrls(pages: number[], runId: number): Promise<void> {
+  const galleryUrl = getGalleryBaseUrl();
+  if (!galleryUrl) return Promise.resolve();
+
+  function step(): Promise<void> {
+    if (runId !== preloadRunId) return Promise.resolve();
+    const missing = pages.filter(function (page) {
+      return !pageUrlMap[page];
+    });
+    if (!missing.length) return Promise.resolve();
+    const before = missing.length;
+    const signal = preloadAbortController ? preloadAbortController.signal : undefined;
+    return fetchGalleryPageUrls(galleryUrl, missing[0], signal)
+      .catch(function () {})
+      .then(function () {
+        if (runId !== preloadRunId) return;
+        const after = pages.filter(function (page) {
+          return !pageUrlMap[page];
+        }).length;
+        if (after >= before) return; // no progress → stop to avoid an infinite loop
+        return step();
+      });
+  }
+
+  return step();
+}
+
+function preloadPagesAhead(pages: number[], runId: number) {
+  return ensureWindowUrls(pages, runId).then(function () {
+    if (runId !== preloadRunId) return;
+    // prefetchOnePage never rejects (handles its own errors). Promise.all ties
+    // the per-page lifetimes to this promise for future observability.
+    return Promise.all(
+      pages.map(function (page, index) {
+        return prefetchOnePage(page, index + 1, runId);
+      })
+    );
+  });
 }
 
 export function preloadNext() {
   if (settings.value.preloadAheadCount <= 0) {
     abortActivePreload();
-    removeOldPreloadFrames();
+    resetWindowState();
     preloadState = {};
     showStatus('EH: preload off');
     return;
   }
+
+  if (!isOverlayActive()) return;
 
   const rootKey = getCurrentKey();
   if (rootKey === lastPreloadRootKey) return;
   lastPreloadRootKey = rootKey;
   abortActivePreload();
   preloadAbortController = new AbortController();
-  removeOldPreloadFrames();
+  resetWindowState();
   preloadState = {};
 
-  if (isOverlayActive() && virtualPage.value > 0) {
-    const currentPage = virtualPage.value;
-    const total = totalPages.value;
-    const info = settings.value.spreadView
-      ? getSpreadPageInfo(currentPage, total, settings.value.spreadCoverAlone)
-      : { pagesInSpread: 1 };
-    const afterSpreadPage = currentPage + info.pagesInSpread;
-    const afterSpreadUrl = pageUrlMap[afterSpreadPage];
-    if (afterSpreadUrl) {
-      preloadAheadFrom(afterSpreadUrl, 1);
-    }
-    return;
-  }
-
-  const nextUrl = getNextPageUrl();
-  if (!nextUrl) {
-    showStatus('EH: next not found');
-    return;
-  }
-
-  if (isOverlayActive()) {
-    const currentPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
-    const totalStr = getTotalPageLabel();
-    const total = parseInt(totalStr, 10) || 0;
-    const info = settings.value.spreadView
-      ? getSpreadPageInfo(currentPage, total, settings.value.spreadCoverAlone)
-      : { pagesInSpread: 1 };
-    const afterSpreadPage = currentPage + info.pagesInSpread + 1;
-    const afterSpreadUrl = pageUrlMap[afterSpreadPage];
-    if (afterSpreadUrl) {
-      preloadAheadFrom(afterSpreadUrl, 1);
-      return;
-    }
-
-    const cachedDoc = viewerDocCache.get(nextUrl);
-    if (cachedDoc) {
-      const afterPartner = getNextPageUrlFromDocument(cachedDoc, nextUrl);
-      if (afterPartner) {
-        preloadAheadFrom(afterPartner, 1);
-      }
-      return;
-    }
-  }
-
-  preloadAheadFrom(nextUrl, 1);
+  const runId = preloadRunId;
+  const currentPage = virtualPage.value || parseInt(getViewerPageFromUrl(location.href), 10) || 0;
+  const total = totalPages.value || parseInt(getTotalPageLabel(), 10) || 0;
+  const info = settings.value.spreadView
+    ? getSpreadPageInfo(currentPage, total, settings.value.spreadCoverAlone)
+    : { pagesInSpread: 1 };
+  const pages = getPreloadWindowPages(
+    currentPage,
+    info.pagesInSpread,
+    total,
+    settings.value.preloadAheadCount
+  );
+  currentWindowPages = pages;
+  // Fire-and-forget; per-page errors are handled inside prefetchOnePage.
+  void preloadPagesAhead(pages, runId);
 }
 
 export function schedulePreloadAfterCurrentImage() {

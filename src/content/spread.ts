@@ -7,12 +7,11 @@ import {
 import {
   getMainImage,
   getNextPageUrl,
-  getNextPageUrlFromDocument,
   getGalleryBaseUrl,
   fetchGalleryPageUrls,
   getImageUrlFromDocument,
   getTotalPageLabel,
-  fetchViewerDocument,
+  resolvePageData,
   viewerDocCache,
   pageUrlMap,
   pageImageMap,
@@ -22,7 +21,7 @@ import {
 import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
-import { schedulePreloadAfterCurrentImage } from './preloader.js';
+import { schedulePreloadAfterCurrentImage, resetPreloadCache } from './preloader.js';
 
 let spreadRenderRunId = 0;
 let lastSpreadActive = false;
@@ -43,20 +42,14 @@ function loadPartnerImage(partnerPage: number, runId: number, callback: (src: st
   pageUrlMap[partnerPage] = partnerUrl;
   persistPageMaps();
 
-  fetchViewerDocument(partnerUrl)
-    .then(function (doc) {
+  resolvePageData(partnerUrl)
+    .then(function (data) {
       if (runId !== spreadRenderRunId) return;
-      const imageUrl = getImageUrlFromDocument(doc, partnerUrl);
-      if (imageUrl) {
-        pageImageMap[partnerPage] = imageUrl;
-        callback(imageUrl);
+      if (data.imageUrl) {
+        pageImageMap[partnerPage] = data.imageUrl;
+        persistPageMaps();
+        callback(data.imageUrl);
       }
-      const followingUrl = getNextPageUrlFromDocument(doc, partnerUrl);
-      if (followingUrl) {
-        const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
-        if (followingPage) pageUrlMap[followingPage] = followingUrl;
-      }
-      persistPageMaps();
     })
     .catch(function () {
       if (runId !== spreadRenderRunId) return;
@@ -151,17 +144,9 @@ function resolvePageImage(page: number): Promise<string> {
 
   const url = pageUrlMap[page];
   if (url) {
-    return fetchViewerDocument(url)
-      .then(function (doc) {
-        const imageUrl = getImageUrlFromDocument(doc, url);
-        if (imageUrl) pageImageMap[page] = imageUrl;
-        const nextUrl = getNextPageUrlFromDocument(doc, url);
-        if (nextUrl) {
-          const nextPage = parseInt(getViewerPageFromUrl(nextUrl), 10);
-          if (nextPage) pageUrlMap[nextPage] = nextUrl;
-        }
-        persistPageMaps();
-        return imageUrl;
+    return resolvePageData(url)
+      .then(function (data) {
+        return data.imageUrl;
       })
       .catch(function () {
         return '';
@@ -321,6 +306,7 @@ export function exitOverlay() {
 }
 
 function removeSpreadOverlayState() {
+  resetPreloadCache();
   spreadRenderRunId += 1;
   spreadState.value = {
     active: false,

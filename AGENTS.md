@@ -149,6 +149,24 @@ CI (`.github/workflows/ci.yml`) でも PR とコード変更を含む main push 
 メッセージは英語で簡潔に、何が変わったかを具体的に書く
 (例: `fix: restore auto scroll during early page load`)。
 
+コミット subject はそのまま GitHub Release のリリースノートに使われる。AI エージェントは
+コミット前に `scripts/release-notes.mjs` の挙動を意識して、ユーザー向けに読める subject にする。
+
+- リリースノートに載るのは `feat` / `fix` / `perf` の subject のみ。各 subject の説明部分が
+  `Features` / `Bug Fixes` / `Performance` の箇条書きになる。
+- `feat(scope): ...` の scope は `**scope:** ...` として表示される。scope は短く、ユーザーが
+  意味を推測できる領域名にする (例: `spread`, `popup`, `preload`)。
+- `docs` / `chore` / `refactor` / `test` / `ci` はリリースノートから除外される。ユーザー向けの
+  変更を含むコミットにこれらの type を使わない。
+- subject は命令形・現在形で、実装手段ではなくユーザーに見える結果を書く。曖昧な
+  `update`, `adjust`, `misc fixes` を避ける。
+- 内部事情、作業メモ、チケット番号だけの説明、AI エージェント名、不要な接尾辞、末尾のピリオドは
+  subject に入れない。必要な補足は本文に書く。
+- バージョン更新だけのコミットは `chore: bump version to x.y.z` とし、リリースノートには載せない。
+
+リリース前に必要なら `npm run release:notes` を実行し、生成される文面がユーザー向けの
+変更履歴として自然か確認する。
+
 ## ブランチとレビューの流れ
 
 `main` に直接コミットしない。トピックブランチで作業し、Pull Request を作成して
