@@ -10,6 +10,7 @@
     "dev": "npm run build && concurrently -k \"npm:build:watch\" \"npm:addon:dev\"",
     "addon:lint": "npx web-ext lint --source-dir addon --self-hosted",
     "addon:sign": "npx web-ext sign --source-dir addon --artifacts-dir dist --channel unlisted --api-key \"$AMO_JWT_ISSUER\" --api-secret \"$AMO_JWT_SECRET\"",
+    "release:notes": "node scripts/release-notes.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run addon:lint && npm run addon:build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
