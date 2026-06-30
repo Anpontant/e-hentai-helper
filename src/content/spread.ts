@@ -7,12 +7,11 @@ import {
 import {
   getMainImage,
   getNextPageUrl,
-  getNextPageUrlFromDocument,
   getGalleryBaseUrl,
   fetchGalleryPageUrls,
   getImageUrlFromDocument,
   getTotalPageLabel,
-  fetchViewerDocument,
+  resolvePageData,
   viewerDocCache,
   pageUrlMap,
   pageImageMap,
@@ -43,20 +42,13 @@ function loadPartnerImage(partnerPage: number, runId: number, callback: (src: st
   pageUrlMap[partnerPage] = partnerUrl;
   persistPageMaps();
 
-  fetchViewerDocument(partnerUrl)
-    .then(function (doc) {
+  resolvePageData(partnerUrl)
+    .then(function (data) {
       if (runId !== spreadRenderRunId) return;
-      const imageUrl = getImageUrlFromDocument(doc, partnerUrl);
-      if (imageUrl) {
-        pageImageMap[partnerPage] = imageUrl;
-        callback(imageUrl);
+      if (data.imageUrl) {
+        pageImageMap[partnerPage] = data.imageUrl;
+        callback(data.imageUrl);
       }
-      const followingUrl = getNextPageUrlFromDocument(doc, partnerUrl);
-      if (followingUrl) {
-        const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
-        if (followingPage) pageUrlMap[followingPage] = followingUrl;
-      }
-      persistPageMaps();
     })
     .catch(function () {
       if (runId !== spreadRenderRunId) return;
@@ -151,17 +143,9 @@ function resolvePageImage(page: number): Promise<string> {
 
   const url = pageUrlMap[page];
   if (url) {
-    return fetchViewerDocument(url)
-      .then(function (doc) {
-        const imageUrl = getImageUrlFromDocument(doc, url);
-        if (imageUrl) pageImageMap[page] = imageUrl;
-        const nextUrl = getNextPageUrlFromDocument(doc, url);
-        if (nextUrl) {
-          const nextPage = parseInt(getViewerPageFromUrl(nextUrl), 10);
-          if (nextPage) pageUrlMap[nextPage] = nextUrl;
-        }
-        persistPageMaps();
-        return imageUrl;
+    return resolvePageData(url)
+      .then(function (data) {
+        return data.imageUrl;
       })
       .catch(function () {
         return '';

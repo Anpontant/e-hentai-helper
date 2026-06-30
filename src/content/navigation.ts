@@ -174,6 +174,24 @@ export function fetchViewerDocument(pageUrl: string, signal?: AbortSignal) {
     });
 }
 
+export function resolvePageData(
+  url: string,
+  signal?: AbortSignal
+): Promise<{ imageUrl: string; followingUrl: string }> {
+  return fetchViewerDocument(url, signal).then(function (doc) {
+    const imageUrl = getImageUrlFromDocument(doc, url);
+    const followingUrl = getNextPageUrlFromDocument(doc, url);
+    const page = parseInt(getViewerPageFromUrl(url), 10);
+    if (page && imageUrl) pageImageMap[page] = imageUrl;
+    if (followingUrl) {
+      const followingPage = parseInt(getViewerPageFromUrl(followingUrl), 10);
+      if (followingPage) pageUrlMap[followingPage] = followingUrl;
+    }
+    persistPageMaps();
+    return { imageUrl: imageUrl, followingUrl: followingUrl };
+  });
+}
+
 function getStorageKey() {
   const galleryId = getGalleryIdFromUrl(location.href);
   return galleryId ? 'eh-helper-maps-' + galleryId : '';
