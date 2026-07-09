@@ -13,6 +13,7 @@ import {
   exitOverlay
 } from './spread.js';
 import { getCurrentKey, getMainImage, restorePageMaps } from './navigation.js';
+import { initInactivityUrlSync } from './inactivity.js';
 import { CHANGE_DEBOUNCE_MS } from '../shared/constants.js';
 import { App } from './components/App.jsx';
 import { effect } from '@preact/signals';
@@ -183,6 +184,7 @@ document.addEventListener('keydown', function (event) {
 });
 
 setupMessageHandlers();
+initInactivityUrlSync();
 updateFitStyle();
 
 // Mount Preact app

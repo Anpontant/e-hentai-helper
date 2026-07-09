@@ -23,6 +23,7 @@ import { applyImageFit } from './fit.js';
 import { removeSpreadFitStyle } from './fit.js';
 import { scrollToImage } from './scroll.js';
 import { schedulePreloadAfterCurrentImage, resetPreloadCache } from './preloader.js';
+import { cancelInactivityUrlSync, armInactivityUrlSync } from './inactivity.js';
 
 let spreadRenderRunId = 0;
 let lastSpreadActive = false;
@@ -311,6 +312,7 @@ export function exitOverlay() {
 
 function removeSpreadOverlayState() {
   resetPreloadCache();
+  cancelInactivityUrlSync();
   spreadRenderRunId += 1;
   spreadState.value = {
     active: false,
@@ -336,6 +338,11 @@ function removeSpreadOverlayState() {
 export function updateSpreadVisibility() {
   const s = settings.value;
   if (s.overlayView || s.spreadView) {
+    // The overlay may (re)activate here without any page navigation or user
+    // activity (e.g. a popup settings change). Re-arm the inactivity URL
+    // sync timer so it doesn't stay dead after a prior deactivation cleared
+    // it (see removeSpreadOverlayState -> cancelInactivityUrlSync).
+    armInactivityUrlSync();
     if (virtualPage.value > 0) {
       renderSpreadAtPage(virtualPage.value, false);
     } else {
