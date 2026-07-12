@@ -7,6 +7,7 @@ import {
 import {
   getMainImage,
   getNextPageUrl,
+  getPrevPageUrl,
   getGalleryBaseUrl,
   fetchGalleryPageUrls,
   getImageUrlFromDocument,
@@ -26,7 +27,21 @@ import { schedulePreloadAfterCurrentImage, resetPreloadCache } from './preloader
 import { cancelInactivityUrlSync, armInactivityUrlSync } from './inactivity.js';
 
 let spreadRenderRunId = 0;
-let lastSpreadActive = false;
+
+// The viewer document links to its neighbours, so the page we landed on knows
+// the previous page's URL. Seeding it lets the spread that contains this page
+// resolve its right half with a single viewer fetch instead of falling back to
+// a gallery listing fetch (see resolvePageImage).
+function seedPrevPageUrl(currentPage: number) {
+  const prevPage = currentPage - 1;
+  if (prevPage < 1 || pageUrlMap[prevPage]) return;
+
+  const prevUrl = getPrevPageUrl();
+  if (!prevUrl) return;
+  if (parseInt(getViewerPageFromUrl(prevUrl), 10) !== prevPage) return;
+
+  pageUrlMap[prevPage] = prevUrl;
+}
 
 function loadPartnerImage(partnerPage: number, runId: number, callback: (src: string) => void) {
   const cachedImage = pageImageMap[partnerPage];
@@ -59,7 +74,7 @@ function loadPartnerImage(partnerPage: number, runId: number, callback: (src: st
     });
 }
 
-export function renderSpread(skipSnap?: boolean) {
+export function renderSpread() {
   const s = settings.value;
   if (!s.overlayView && !s.spreadView) return;
 
@@ -71,23 +86,24 @@ export function renderSpread(skipSnap?: boolean) {
   const totalStr = getTotalPageLabel();
   const total = parseInt(totalStr, 10) || 0;
   const useSpread = s.spreadView;
-  let info = useSpread
+  const info = useSpread
     ? getSpreadPageInfo(currentPage, total, s.spreadCoverAlone)
     : { partnerPage: null, pagesInSpread: 1, isRightPage: true };
-
-  if (!info.isRightPage) {
-    if (skipSnap) {
-      info = { partnerPage: null, pagesInSpread: 1, isRightPage: true };
-    } else {
-      const snapUrl = pageUrlMap[currentPage + 1] || getNextPageUrl();
-      if (snapUrl) location.href = snapUrl;
-      return;
-    }
-  }
 
   pageUrlMap[currentPage] = location.href;
   if (img.src && !pageImageMap[currentPage]) pageImageMap[currentPage] = img.src;
   persistPageMaps();
+
+  if (!info.isRightPage) {
+    // We landed on the left half of a spread (e.g. page 3 while "cover alone"
+    // pairs 2|3). Render the spread that *contains* this page — renderSpreadAtPage
+    // resolves back to its right page and this page's image becomes the left
+    // half — instead of moving on to the next spread.
+    seedPrevPageUrl(currentPage);
+    totalPages.value = total;
+    renderSpreadAtPage(currentPage);
+    return;
+  }
 
   spreadRenderRunId += 1;
   const runId = spreadRenderRunId;
@@ -346,10 +362,8 @@ export function updateSpreadVisibility() {
     if (virtualPage.value > 0) {
       renderSpreadAtPage(virtualPage.value, false);
     } else {
-      const skipSnap = lastSpreadActive && s.spreadView;
-      renderSpread(skipSnap);
+      renderSpread();
     }
-    lastSpreadActive = s.spreadView;
   } else {
     const actualPage = parseInt(getViewerPageFromUrl(location.href), 10) || 0;
     const vp = virtualPage.value;
@@ -357,7 +371,6 @@ export function updateSpreadVisibility() {
 
     removeSpreadOverlayState();
     clearPageMapsStorage();
-    lastSpreadActive = false;
 
     if (targetUrl) {
       location.href = targetUrl;
