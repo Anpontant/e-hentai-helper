@@ -41,8 +41,7 @@ import { advanceSpread, renderSpread, retryImage } from '../src/content/spread.j
 画像 URL 定義の直後へ、再試行後の画像 URL を追加する。
 
 ```ts
-const RETRIED_IMAGE_URL = (page: number) =>
-  'https://img.example/page' + page + '-retry.jpg';
+const RETRIED_IMAGE_URL = (page: number) => 'https://img.example/page' + page + '-retry.jpg';
 ```
 
 ファイル末尾へ次のテストを追加する。
@@ -130,20 +129,20 @@ function getCurrentPageForSide(side: 'left' | 'right'): number {
 `retryImage()` の `persistPageMaps();` 直後へ次の早期 return を追加し、その後の左右更新は現状のまま残す。
 
 ```ts
-      if (getCurrentPageForSide(side) !== page) return;
+if (getCurrentPageForSide(side) !== page) return;
 ```
 
 完成後の該当部分は次の形になる。
 
 ```ts
-      pageImageMap[page] = imageUrl;
-      persistPageMaps();
-      if (getCurrentPageForSide(side) !== page) return;
-      if (side === 'right') {
-        spreadState.value = { ...spreadState.value, rightSrc: imageUrl, rightFallbackSrc: '' };
-      } else {
-        spreadState.value = { ...spreadState.value, leftSrc: imageUrl };
-      }
+pageImageMap[page] = imageUrl;
+persistPageMaps();
+if (getCurrentPageForSide(side) !== page) return;
+if (side === 'right') {
+  spreadState.value = { ...spreadState.value, rightSrc: imageUrl, rightFallbackSrc: '' };
+} else {
+  spreadState.value = { ...spreadState.value, leftSrc: imageUrl };
+}
 ```
 
 - [ ] **Step 5: 対象テストが成功することを確認する**
