@@ -1,53 +1,53 @@
-# Stale Retry Display Guard Design
+# 遅延した画像再試行による表示上書きの防止
 
-## Goal
+## 目的
 
-Prevent an image retry that completes after overlay navigation from replacing the image shown for a newer page, while retaining the successful retry result for the page that was actually fetched.
+オーバーレイでページ移動した後に古い画像再試行が完了しても、新しいページの表示を上書きしないようにする。一方、再試行によって正常に取得できた画像は、実際に取得したページのキャッシュへ残す。
 
-## Scope
+## 対象範囲
 
-This change is limited to the asynchronous completion path in `retryImage()` and its regression coverage. It does not change inactivity URL synchronization, normal page resolution, preload behavior, navigation direction, or spread pairing.
+変更対象は `retryImage()` の非同期完了処理と、その回帰テストだけとする。無操作時の URL 同期、通常のページ解決、プリロード、ナビゲーション方向、見開きの組み合わせは変更しない。
 
-## Root Cause
+## 根本原因
 
-`retryImage()` determines a target page and side before starting its fetch. On success it correctly stores the fetched image URL in `viewerDataCache` and `pageImageMap`, but then writes the result directly to the captured side of the current `spreadState`.
+`retryImage()` は fetch を開始する前に、再試行対象のページ番号と表示位置を決定する。取得成功時には、画像 URL を `viewerDataCache` と `pageImageMap` の正しいページへ保存している。
 
-If the user advances, retreats, or seeks before the fetch completes, that side now represents another page. The stale completion therefore replaces a newer page image even though the page caches themselves remain keyed to the original target page.
+しかし、その直後に、取得開始時の表示位置を使って現在の `spreadState` へ画像 URL を直接書き込んでいる。fetch の完了前に進む・戻る・シークのいずれかを行うと、その表示位置は別のページを表すようになるため、古い完了処理が新しいページの画像を上書きする。
 
-## Design
+## 設計
 
-The retry completion will keep its current cache writes. Before updating `spreadState`, it will derive the page currently represented by the captured side:
+再試行完了時のキャッシュ書き込みは現状どおり残す。`spreadState` を更新する前に、取得開始時の表示位置が現在どのページを表しているかを求める。
 
-- The right side represents `virtualPage.value`.
-- In spread mode, the left side represents the partner page returned by `getSpreadPageInfo()` for the current right page.
-- In single-page mode, there is no current left-side page.
+- 右側は `virtualPage.value` のページを表す。
+- 見開き表示の左側は、現在の右ページに対して `getSpreadPageInfo()` が返す相方ページを表す。
+- 単ページ表示には左側のページは存在しない。
 
-The completion updates `spreadState` only when that current side page still equals the retry target page. If navigation or a settings change has reassigned the side, the display write is skipped.
+現在その表示位置に割り当てられているページが、再試行対象ページと一致する場合だけ `spreadState` を更新する。ページ移動や設定変更によって表示位置の割り当てが変わっていた場合は、画面への書き込みを行わない。
 
-This page-identity check is preferred over a render-generation check because a harmless redraw of the same page should not discard a successful retry. It is preferred over rerendering the entire current spread because that would restart unrelated resolution and preload work.
+描画世代 ID だけで判定する方式は採用しない。同じページを無害に再描画しただけでも、正常な再試行結果が画面へ反映されなくなるためである。また、キャッシュ更新後に現在の見開き全体を再描画する方式も採用しない。無関係な画像解決やプリロードを再実行するためである。
 
-## Data Flow
+## データの流れ
 
-1. Capture the retry target page and requested side.
-2. Fetch and parse the target viewer page as today.
-3. Update `viewerDataCache` and `pageImageMap` for the target page and persist the maps.
-4. Resolve the page currently assigned to the requested side.
-5. Update `spreadState` only when the current side page matches the target page.
+1. 再試行対象のページ番号と表示位置を確定する。
+2. 現状どおり対象ページを fetch して解析する。
+3. 対象ページの `viewerDataCache` と `pageImageMap` を更新し、ページ対応表を保存する。
+4. 再試行対象の表示位置に、現在割り当てられているページ番号を求める。
+5. 現在のページ番号が再試行対象ページと一致する場合だけ `spreadState` を更新する。
 
-A stale response remains useful when the user later returns to its page because normal rendering reads the refreshed URL from `pageImageMap`.
+古い再試行結果も対象ページのキャッシュには残るため、利用者がそのページへ戻った際には、通常の描画処理が更新済みの `pageImageMap` から画像 URL を取得できる。
 
-## Error Handling
+## エラー処理
 
-Fetch, HTTP, parse, and missing-image failures retain the existing behavior: they do not update caches or the display, and the promise rejection is contained by the existing catch path.
+fetch 失敗、HTTP エラー、HTML 解析失敗、画像 URL が見つからない場合の挙動は変更しない。これらの場合はキャッシュと画面を更新せず、既存の `catch` で Promise の失敗を処理する。
 
-## Testing
+## テスト
 
-Add a regression test that:
+次の回帰テストを追加する。
 
-1. Displays a spread with a failed image and starts a deferred retry for that page.
-2. Navigates to a fully cached newer spread before resolving the retry.
-3. Resolves the old retry successfully.
-4. Verifies that `viewerDataCache` and `pageImageMap` contain the retried image for the original page.
-5. Verifies that `virtualPage` and both displayed image URLs remain on the newer spread.
+1. 画像エラーがある見開きを表示し、そのページの再試行 fetch を未完了のまま保持する。
+2. 再試行を完了させる前に、すべての画像がキャッシュ済みの次の見開きへ移動する。
+3. 古い再試行を正常終了させる。
+4. 元ページの `viewerDataCache` と `pageImageMap` に、再試行後の画像 URL が保存されていることを確認する。
+5. `virtualPage` と画面上の左右の画像 URL が、移動後の見開きのままであることを確認する。
 
-The existing initial-render tests remain unchanged. The full repository quality gate, `npm run check`, must pass before the implementation commit.
+既存の初期描画テストは変更しない。実装コミットの前に、リポジトリ全体の品質ゲートである `npm run check` が成功することを確認する。
