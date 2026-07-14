@@ -2,11 +2,12 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { settings, spreadState, virtualPage, totalPages } from '../src/content/state.js';
 import { DEFAULT_SETTINGS } from '../src/shared/constants.js';
 import { pageUrlMap, pageImageMap, viewerDataCache } from '../src/content/navigation.js';
-import { renderSpread } from '../src/content/spread.js';
+import { advanceSpread, renderSpread, retryImage } from '../src/content/spread.js';
 
 const GALLERY_URL = 'https://e-hentai.org/g/999/abcdef/';
 const PAGE_URL = (page: number) => 'https://e-hentai.org/s/key' + page + '/999-' + page;
 const IMAGE_URL = (page: number) => 'https://img.example/page' + page + '.jpg';
+const RETRIED_IMAGE_URL = (page: number) => 'https://img.example/page' + page + '-retry.jpg';
 
 function setupViewerDom(page: number, total: number) {
   document.body.innerHTML = `
@@ -134,5 +135,53 @@ describe('renderSpread landing on the right half of a spread', () => {
     expect(virtualPage.value).toBe(1);
     expect(spreadState.value.single).toBe(true);
     expect(spreadState.value.rightSrc).toBe(IMAGE_URL(1));
+  });
+});
+
+describe('retryImage navigation race', () => {
+  test('keeps a newer spread visible when an older retry completes', async () => {
+    setupViewerDom(2, 40);
+    stubLocation(2);
+    pageUrlMap[3] = PAGE_URL(3);
+    pageImageMap[3] = IMAGE_URL(3);
+    pageUrlMap[4] = PAGE_URL(4);
+    pageImageMap[4] = IMAGE_URL(4);
+    pageUrlMap[5] = PAGE_URL(5);
+    pageImageMap[5] = IMAGE_URL(5);
+
+    renderSpread();
+
+    let resolveRetry!: (response: Response) => void;
+    const retryResponse = new Promise<Response>((resolve) => {
+      resolveRetry = resolve;
+    });
+    const fetchMock = vi.fn(() => retryResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    retryImage('left');
+    advanceSpread();
+
+    expect(virtualPage.value).toBe(4);
+    expect(spreadState.value.rightSrc).toBe(IMAGE_URL(4));
+    expect(spreadState.value.leftSrc).toBe(IMAGE_URL(5));
+
+    resolveRetry({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          `<a href="${PAGE_URL(4)}"><img id="img" src="${RETRIED_IMAGE_URL(3)}" /></a>`
+        )
+    } as Response);
+
+    await vi.waitFor(() => expect(pageImageMap[3]).toBe(RETRIED_IMAGE_URL(3)));
+
+    expect(fetchMock).toHaveBeenCalledWith(PAGE_URL(3), {
+      credentials: 'include',
+      cache: 'reload'
+    });
+    expect(viewerDataCache.get(PAGE_URL(3))?.imageUrl).toBe(RETRIED_IMAGE_URL(3));
+    expect(virtualPage.value).toBe(4);
+    expect(spreadState.value.rightSrc).toBe(IMAGE_URL(4));
+    expect(spreadState.value.leftSrc).toBe(IMAGE_URL(5));
   });
 });

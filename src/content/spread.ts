@@ -263,6 +263,18 @@ export function seekToPage(page: number) {
   renderSpreadAtPage(Math.round(page));
 }
 
+function getCurrentPageForSide(side: 'left' | 'right'): number {
+  const rightPage = virtualPage.value;
+  if (!rightPage) return 0;
+  if (side === 'right') return rightPage;
+
+  const s = settings.value;
+  if (!s.spreadView) return 0;
+
+  const info = getSpreadPageInfo(rightPage, totalPages.value, s.spreadCoverAlone);
+  return info.partnerPage || 0;
+}
+
 export function retryImage(side: 'left' | 'right') {
   const rightPage = virtualPage.value;
   if (!rightPage) return;
@@ -302,6 +314,7 @@ export function retryImage(side: 'left' | 'right') {
       });
       pageImageMap[page] = imageUrl;
       persistPageMaps();
+      if (getCurrentPageForSide(side) !== page) return;
       if (side === 'right') {
         spreadState.value = { ...spreadState.value, rightSrc: imageUrl, rightFallbackSrc: '' };
       } else {
