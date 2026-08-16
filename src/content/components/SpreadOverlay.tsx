@@ -26,6 +26,9 @@ export function SpreadOverlay() {
   const state = spreadState.value;
   const hasLeftError = leftError.value;
   const hasRightError = rightError.value;
+  // Firefox may keep painting the old bitmap while a reused img loads its next
+  // source. A page/source key forces each displayed image onto a fresh element.
+  const imagePageKey = virtualPage.value;
 
   useEffect(
     function () {
@@ -157,15 +160,34 @@ export function SpreadOverlay() {
     if (cls) overlay.classList.add(cls);
   }
 
-  function handleLeftError() {
+  function isCurrentImageEvent(event: Event, side: 'left' | 'right') {
+    const image = event.currentTarget;
+    const id = side === 'left' ? 'eh-helper-spread-left' : 'eh-helper-spread-right';
+    const currentState = spreadState.value;
+    const expectedSrc = side === 'left' ? state.leftSrc : state.rightSrc;
+    const currentSrc = side === 'left' ? currentState.leftSrc : currentState.rightSrc;
+
+    return (
+      image instanceof HTMLImageElement &&
+      document.getElementById(id) === image &&
+      virtualPage.value === imagePageKey &&
+      currentSrc === expectedSrc
+    );
+  }
+
+  function handleLeftError(event: Event) {
+    if (!isCurrentImageEvent(event, 'left')) return;
     leftError.value = true;
   }
 
-  function handleRightError() {
-    if (state.rightFallbackSrc && state.rightSrc !== state.rightFallbackSrc) {
+  function handleRightError(event: Event) {
+    if (!isCurrentImageEvent(event, 'right')) return;
+
+    const currentState = spreadState.value;
+    if (currentState.rightFallbackSrc && currentState.rightSrc !== currentState.rightFallbackSrc) {
       spreadState.value = {
-        ...spreadState.value,
-        rightSrc: state.rightFallbackSrc,
+        ...currentState,
+        rightSrc: currentState.rightFallbackSrc,
         rightFallbackSrc: ''
       };
       return;
@@ -208,12 +230,22 @@ export function SpreadOverlay() {
           </div>
         </div>
       )}
-      <img id="eh-helper-spread-left" src={state.leftSrc || undefined} onError={handleLeftError} />
-      <img
-        id="eh-helper-spread-right"
-        src={state.rightSrc || undefined}
-        onError={handleRightError}
-      />
+      {!state.single && state.leftSrc && (
+        <img
+          key={'left-' + imagePageKey + '|' + state.leftSrc}
+          id="eh-helper-spread-left"
+          src={state.leftSrc}
+          onError={handleLeftError}
+        />
+      )}
+      {state.rightSrc && (
+        <img
+          key={'right-' + imagePageKey + '|' + state.rightSrc}
+          id="eh-helper-spread-right"
+          src={state.rightSrc}
+          onError={handleRightError}
+        />
+      )}
       {hasLeftError && !state.single && (
         <button
           class="eh-retry-hint eh-retry-left"
