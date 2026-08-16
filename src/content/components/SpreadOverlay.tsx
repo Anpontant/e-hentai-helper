@@ -174,6 +174,9 @@ export function SpreadOverlay() {
   }
 
   const seekFrac = seekFractionFromPage(seekPreview.value ?? virtualPage.value, totalPages.value);
+  // Firefox may keep painting the old bitmap while a reused img loads its next
+  // source. A page/source key forces each displayed image onto a fresh element.
+  const imagePageKey = virtualPage.value;
 
   return (
     <div
@@ -208,12 +211,22 @@ export function SpreadOverlay() {
           </div>
         </div>
       )}
-      <img id="eh-helper-spread-left" src={state.leftSrc || undefined} onError={handleLeftError} />
-      <img
-        id="eh-helper-spread-right"
-        src={state.rightSrc || undefined}
-        onError={handleRightError}
-      />
+      {!state.single && state.leftSrc && (
+        <img
+          key={'left-' + imagePageKey + '|' + state.leftSrc}
+          id="eh-helper-spread-left"
+          src={state.leftSrc}
+          onError={handleLeftError}
+        />
+      )}
+      {state.rightSrc && (
+        <img
+          key={'right-' + imagePageKey + '|' + state.rightSrc}
+          id="eh-helper-spread-right"
+          src={state.rightSrc}
+          onError={handleRightError}
+        />
+      )}
       {hasLeftError && !state.single && (
         <button
           class="eh-retry-hint eh-retry-left"
